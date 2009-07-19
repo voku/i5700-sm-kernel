@@ -280,7 +280,7 @@ static int datafab_determine_lun(struct us_data *us,
 	unsigned char *buf;
 	int count = 0, rc;
 
-	if (!us || !info)
+	if (!info)
 		return USB_STOR_TRANSPORT_ERROR;
 
 	memcpy(command, scommand, 8);
@@ -345,7 +345,7 @@ static int datafab_id_device(struct us_data *us,
 	unsigned char *reply;
 	int rc;
 
-	if (!us || !info)
+	if (!info)
 		return USB_STOR_TRANSPORT_ERROR;
 
 	if (info->lun == -1) {
