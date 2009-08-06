@@ -262,6 +262,14 @@ void log_buf_clear(void)
 }
 
 /*
+ * Clears the ring-buffer
+ */
+void log_buf_clear(void)
+{
+	logged_chars = 0;
+}
+
+/*
  * Copy a range of characters from the log buffer.
  */
 int log_buf_copy(char *dest, int idx, int len)
