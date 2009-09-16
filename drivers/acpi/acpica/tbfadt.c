@@ -243,7 +243,6 @@ void acpi_tb_parse_fadt(u32 table_index, u8 flags)
 
 void acpi_tb_create_local_fadt(struct acpi_table_header *table, u32 length)
 {
-
 	/*
 	 * Check if the FADT is larger than the largest table that we expect
 	 * (the ACPI 2.0/3.0 version). If so, truncate the table, and issue
