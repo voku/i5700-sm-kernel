@@ -941,6 +941,9 @@ extern int r300_do_cp_cmdbuf(struct drm_device *dev,
 #	define RADEON_CSQ_PRIBM_INDBM		(4 << 28)
 #	define RADEON_CSQ_PRIPIO_INDPIO		(15 << 28)
 
+#define R300_CP_RESYNC_ADDR		0x0778
+#define R300_CP_RESYNC_DATA		0x077c
+
 #define RADEON_AIC_CNTL			0x01d0
 #	define RADEON_PCIGART_TRANSLATE_EN	(1 << 0)
 #	define RS400_MSI_REARM	                (1 << 3)
