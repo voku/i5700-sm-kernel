@@ -502,7 +502,7 @@ static inline int uart_handle_break(struct uart_port *port)
 
 /**
  *	uart_handle_dcd_change - handle a change of carrier detect state
- *	@port: uart_port structure for the open port
+ *	@uport: uart_port structure for the open port
  *	@status: new carrier detect status, nonzero if active
  */
 static inline void
@@ -527,7 +527,7 @@ uart_handle_dcd_change(struct uart_port *port, unsigned int status)
 
 /**
  *	uart_handle_cts_change - handle a change of clear-to-send state
- *	@port: uart_port structure for the open port
+ *	@uport: uart_port structure for the open port
  *	@status: new clear to send status, nonzero if active
  */
 static inline void
