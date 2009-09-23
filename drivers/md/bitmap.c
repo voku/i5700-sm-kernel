@@ -107,6 +107,8 @@ static void bitmap_free_page(struct bitmap *bitmap, unsigned char *page)
  * allocated while we're using it
  */
 static int bitmap_checkpage(struct bitmap *bitmap, unsigned long page, int create)
+__releases(bitmap->lock)
+__acquires(bitmap->lock)
 {
 	unsigned char *mappage;
 
@@ -324,7 +326,6 @@ static int write_sb_page(struct bitmap *bitmap, struct page *page, int wait)
 	return 0;
 
  bad_alignment:
-	rcu_read_unlock();
 	return -EINVAL;
 }
 
@@ -1205,6 +1206,8 @@ void bitmap_daemon_work(struct bitmap *bitmap)
 static bitmap_counter_t *bitmap_get_counter(struct bitmap *bitmap,
 					    sector_t offset, int *blocks,
 					    int create)
+__releases(bitmap->lock)
+__acquires(bitmap->lock)
 {
 	/* If 'create', we might release the lock and reclaim it.
 	 * The lock must have been taken with interrupts enabled.
