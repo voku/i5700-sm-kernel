@@ -1559,6 +1559,10 @@ int test_range_bit(struct extent_io_tree *tree, u64 start, u64 end,
 			bitset = 0;
 			break;
 		}
+
+		if (state->end == (u64)-1)
+			break;
+
 		start = state->end + 1;
 		if (start > end)
 			break;
