@@ -58,6 +58,7 @@ static inline void smp_send_reschedule(int cpu)
 extern asmlinkage void smp_call_function_interrupt(void);
 
 extern void arch_send_call_function_single_ipi(int cpu);
-extern void arch_send_call_function_ipi(cpumask_t mask);
+extern void arch_send_call_function_ipi_mask(const struct cpumask *mask);
+#define arch_send_call_function_ipi_mask arch_send_call_function_ipi_mask
 
 #endif /* __ASM_SMP_H */
