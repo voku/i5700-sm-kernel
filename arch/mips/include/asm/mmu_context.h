@@ -177,8 +177,8 @@ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
 	 * Mark current->active_mm as not "active" anymore.
 	 * We don't want to mislead possible IPI tlb flush routines.
 	 */
-	cpu_clear(cpu, prev->cpu_vm_mask);
-	cpu_set(cpu, next->cpu_vm_mask);
+	cpumask_clear_cpu(cpu, mm_cpumask(prev));
+	cpumask_set_cpu(cpu, mm_cpumask(next));
 
 	local_irq_restore(flags);
 }
@@ -234,8 +234,8 @@ activate_mm(struct mm_struct *prev, struct mm_struct *next)
 	TLBMISS_HANDLER_SETUP_PGD(next->pgd);
 
 	/* mark mmu ownership change */
-	cpu_clear(cpu, prev->cpu_vm_mask);
-	cpu_set(cpu, next->cpu_vm_mask);
+	cpumask_clear_cpu(cpu, mm_cpumask(prev));
+	cpumask_set_cpu(cpu, mm_cpumask(next));
 
 	local_irq_restore(flags);
 }
@@ -257,7 +257,7 @@ drop_mmu_context(struct mm_struct *mm, unsigned cpu)
 
 	local_irq_save(flags);
 
-	if (cpu_isset(cpu, mm->cpu_vm_mask))  {
+	if (cpumask_test_cpu(cpu, mm_cpumask(mm)))  {
 		get_new_mmu_context(mm, cpu);
 #ifdef CONFIG_MIPS_MT_SMTC
 		/* See comments for similar code above */
