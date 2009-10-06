@@ -1375,6 +1375,7 @@ iso_stream_schedule (
 			status = -EFBIG;
 			goto fail;
 		}
+		stream->next_uframe = start;
 		goto ready;
 	}
 
