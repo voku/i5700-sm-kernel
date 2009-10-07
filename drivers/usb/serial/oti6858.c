@@ -289,7 +289,7 @@ static void setup_line(struct work_struct *work)
 
 	dbg("%s(): submitting interrupt urb", __func__);
 	port->interrupt_in_urb->dev = port->serial->dev;
-	result = usb_submit_urb(port->interrupt_in_urb, GFP_ATOMIC);
+	result = usb_submit_urb(port->interrupt_in_urb, GFP_KERNEL);
 	if (result != 0) {
 		dev_err(&port->dev, "%s(): usb_submit_urb() failed"
 				" with error %d\n", __func__, result);
@@ -336,7 +336,7 @@ void send_data(struct work_struct *work)
 
 		dbg("%s(): submitting interrupt urb", __func__);
 		port->interrupt_in_urb->dev = port->serial->dev;
-		result = usb_submit_urb(port->interrupt_in_urb, GFP_ATOMIC);
+		result = usb_submit_urb(port->interrupt_in_urb, GFP_NOIO);
 		if (result != 0) {
 			dev_err(&port->dev, "%s(): usb_submit_urb() failed"
 				" with error %d\n", __func__, result);
@@ -350,7 +350,7 @@ void send_data(struct work_struct *work)
 
 	port->write_urb->transfer_buffer_length = count;
 	port->write_urb->dev = port->serial->dev;
-	result = usb_submit_urb(port->write_urb, GFP_ATOMIC);
+	result = usb_submit_urb(port->write_urb, GFP_NOIO);
 	if (result != 0) {
 		dev_err(&port->dev, "%s(): usb_submit_urb() failed"
 			       " with error %d\n", __func__, result);
