@@ -383,6 +383,7 @@ struct via82xx {
 
 	struct snd_pcm *pcms[2];
 	struct snd_rawmidi *rmidi;
+	struct snd_kcontrol *dxs_controls[4];
 
 	struct snd_ac97_bus *ac97_bus;
 	struct snd_ac97 *ac97;
@@ -1209,9 +1210,9 @@ static int snd_via82xx_pcm_open(struct via82xx *chip, struct viadev *viadev,
 
 
 /*
- * open callback for playback on via686 and via823x DSX
+ * open callback for playback on via686
  */
-static int snd_via82xx_playback_open(struct snd_pcm_substream *substream)
+static int snd_via686_playback_open(struct snd_pcm_substream *substream)
 {
 	struct via82xx *chip = snd_pcm_substream_chip(substream);
 	struct viadev *viadev = &chip->devs[chip->playback_devno + substream->number];
@@ -1219,6 +1220,32 @@ static int snd_via82xx_playback_open(struct snd_pcm_substream *substream)
 
 	if ((err = snd_via82xx_pcm_open(chip, viadev, substream)) < 0)
 		return err;
+	return 0;
+}
+
+/*
+ * open callback for playback on via823x DXS
+ */
+static int snd_via8233_playback_open(struct snd_pcm_substream *substream)
+{
+	struct via82xx *chip = snd_pcm_substream_chip(substream);
+	struct viadev *viadev;
+	unsigned int stream;
+	int err;
+
+	viadev = &chip->devs[chip->playback_devno + substream->number];
+	if ((err = snd_via82xx_pcm_open(chip, viadev, substream)) < 0)
+		return err;
+	stream = viadev->reg_offset / 0x10;
+	if (chip->dxs_controls[stream]) {
+		chip->playback_volume[stream][0] = 0;
+		chip->playback_volume[stream][1] = 0;
+		chip->dxs_controls[stream]->vd[0].access &=
+			~SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+		snd_ctl_notify(chip->card, SNDRV_CTL_EVENT_MASK_VALUE |
+			       SNDRV_CTL_EVENT_MASK_INFO,
+			       &chip->dxs_controls[stream]->id);
+	}
 	return 0;
 }
 
@@ -1295,10 +1322,26 @@ static int snd_via82xx_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+static int snd_via8233_playback_close(struct snd_pcm_substream *substream)
+{
+	struct via82xx *chip = snd_pcm_substream_chip(substream);
+	struct viadev *viadev = substream->runtime->private_data;
+	unsigned int stream;
+
+	stream = viadev->reg_offset / 0x10;
+	if (chip->dxs_controls[stream]) {
+		chip->dxs_controls[stream]->vd[0].access |=
+			SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+		snd_ctl_notify(chip->card, SNDRV_CTL_EVENT_MASK_INFO,
+			       &chip->dxs_controls[stream]->id);
+	}
+	return snd_via82xx_pcm_close(substream);
+}
+
 
 /* via686 playback callbacks */
 static struct snd_pcm_ops snd_via686_playback_ops = {
-	.open =		snd_via82xx_playback_open,
+	.open =		snd_via686_playback_open,
 	.close =	snd_via82xx_pcm_close,
 	.ioctl =	snd_pcm_lib_ioctl,
 	.hw_params =	snd_via82xx_hw_params,
@@ -1324,8 +1367,8 @@ static struct snd_pcm_ops snd_via686_capture_ops = {
 
 /* via823x DSX playback callbacks */
 static struct snd_pcm_ops snd_via8233_playback_ops = {
-	.open =		snd_via82xx_playback_open,
-	.close =	snd_via82xx_pcm_close,
+	.open =		snd_via8233_playback_open,
+	.close =	snd_via8233_playback_close,
 	.ioctl =	snd_pcm_lib_ioctl,
 	.hw_params =	snd_via82xx_hw_params,
 	.hw_free =	snd_via82xx_hw_free,
@@ -1702,8 +1745,9 @@ static struct snd_kcontrol_new snd_via8233_dxs_volume_control __devinitdata = {
 	.device = 0,
 	/* .subdevice set later */
 	.name = "PCM Playback Volume",
-	.access = (SNDRV_CTL_ELEM_ACCESS_READWRITE |
-		   SNDRV_CTL_ELEM_ACCESS_TLV_READ),
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE |
+		  SNDRV_CTL_ELEM_ACCESS_TLV_READ |
+		  SNDRV_CTL_ELEM_ACCESS_INACTIVE,
 	.info = snd_via8233_dxs_volume_info,
 	.get = snd_via8233_dxs_volume_get,
 	.put = snd_via8233_dxs_volume_put,
@@ -1941,6 +1985,7 @@ static int __devinit snd_via8233_init_misc(struct via82xx *chip)
 				err = snd_ctl_add(chip->card, kctl);
 				if (err < 0)
 					return err;
+				chip->dxs_controls[i] = kctl;
 			}
 		}
 	}
