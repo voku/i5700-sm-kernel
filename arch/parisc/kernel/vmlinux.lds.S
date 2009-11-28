@@ -75,9 +75,6 @@ SECTIONS
 	 */
 	. = ALIGN(PAGE_SIZE);
 	data_start = .;
-	EXCEPTION_TABLE(16)
-
-	NOTES
 
 	/* unwind info */
 	.PARISC.unwind : {
@@ -85,6 +82,9 @@ SECTIONS
 		*(.PARISC.unwind)
 		__stop___unwind = .;
 	}
+
+	EXCEPTION_TABLE(16)
+	NOTES
 
 	/* Data */
 	RW_DATA_SECTION(L1_CACHE_BYTES, PAGE_SIZE, THREAD_SIZE)
