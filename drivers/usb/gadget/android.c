@@ -242,7 +242,7 @@ static int __init android_bind(struct usb_composite_dev *cdev)
 	strings_dev[STRING_SERIAL_IDX].id = id;
 
 	if (gadget->ops->wakeup)
-		android_config.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
+		android_config_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 
 	if( (usb_serial_number[0] + 
 		 usb_serial_number[1] + 
