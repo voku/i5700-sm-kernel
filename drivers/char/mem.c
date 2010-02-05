@@ -455,6 +455,7 @@ static ssize_t read_kmem(struct file *file, char __user *buf,
 	unsigned long p = *ppos;
 	ssize_t low_count, read, sz;
 	char * kbuf; /* k-addr because vread() takes vmlist_lock rwlock */
+	int err = 0;
 
 	read = 0;
 	if (p < (unsigned long) high_memory) {
@@ -503,12 +504,16 @@ static ssize_t read_kmem(struct file *file, char __user *buf,
 		while (count > 0) {
 			int len = size_inside_page(p, count);
 
+			if (!is_vmalloc_or_module_addr((void *)p)) {
+				err = -ENXIO;
+				break;
+			}
 			len = vread(kbuf, (char *)p, len);
 			if (!len)
 				break;
 			if (copy_to_user(buf, kbuf, len)) {
-				free_page((unsigned long)kbuf);
-				return -EFAULT;
+				err = -EFAULT;
+				break;
 			}
 			count -= len;
 			buf += len;
@@ -517,8 +522,8 @@ static ssize_t read_kmem(struct file *file, char __user *buf,
 		}
 		free_page((unsigned long)kbuf);
 	}
- 	*ppos = p;
- 	return read;
+	*ppos = p;
+	return read ? read : err;
 }
 
 
@@ -587,6 +592,7 @@ static ssize_t write_kmem(struct file * file, const char __user * buf,
 	ssize_t virtr = 0;
 	ssize_t written;
 	char * kbuf; /* k-addr because vwrite() takes vmlist_lock rwlock */
+	int err = 0;
 
 	if (p < (unsigned long) high_memory) {
 
@@ -610,13 +616,15 @@ static ssize_t write_kmem(struct file * file, const char __user * buf,
 		while (count > 0) {
 			int len = size_inside_page(p, count);
 
+			if (!is_vmalloc_or_module_addr((void *)p)) {
+				err = -ENXIO;
+				break;
+			}
 			if (len) {
 				written = copy_from_user(kbuf, buf, len);
 				if (written) {
-					if (wrote + virtr)
-						break;
-					free_page((unsigned long)kbuf);
-					return -EFAULT;
+					err = -EFAULT;
+					break;
 				}
 			}
 			len = vwrite(kbuf, (char *)p, len);
@@ -628,8 +636,8 @@ static ssize_t write_kmem(struct file * file, const char __user * buf,
 		free_page((unsigned long)kbuf);
 	}
 
- 	*ppos = p;
- 	return virtr + wrote;
+	*ppos = p;
+	return virtr + wrote ? : err;
 }
 #endif
 
