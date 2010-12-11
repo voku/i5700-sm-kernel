@@ -12,6 +12,7 @@
  * published by the Free Software Foundation.
  *
  */
+
 /*
  * Modded by QBANIN to enable a most precise battery level tracking 
  */
@@ -142,6 +143,7 @@ static int full_charge_flag;
 
 static int batt_max;
 static int batt_full;
+static int batt_pre_full_high;
 static int batt_pre_full;
 static int batt_safe_rech;
 static int batt_almost;
@@ -151,9 +153,6 @@ static int batt_low;
 static int batt_critical;
 static int batt_min;
 static int batt_off;
-
-static int battery_old = 100;
-
 #ifdef __ADJUST_RECHARGE_ADC__
 static int batt_recharging;
 #endif /* __ADJUST_RECHARGE_ADC__ */
@@ -461,7 +460,7 @@ static void check_chg_current(struct power_supply *bat_ps)
 	s3c_bat_info.bat_info.batt_current = chg_current;
 	if (chg_current <= CURRENT_OF_FULL_CHG) {
 		cnt++;
-//		if (cnt >= 10) {
+		if (cnt >= 10) {
 			dev_info(dev, "%s: battery full(%d)\n",
 					__func__, chg_current);
 			s3c_set_chg_en(DISABLE);
@@ -470,7 +469,7 @@ static void check_chg_current(struct power_supply *bat_ps)
 			full_charge_flag = 1;
 			cnt = 0;
 			clear_adc_sample(S3C_ADC_CHG_CURRENT);
-//		}
+		}
 	} else {
 		cnt = 0;
 	}
@@ -571,91 +570,343 @@ static void check_recharging_bat(int bat_vol)
 #endif /* __FUEL_GAUGES_IC__ */
 #endif /* __ADJUST_RECHARGE_ADC__ */
 
-static int s3c_bat_get_charging_status(void)
+static void keep_charging(int bat_vol)
 {
-        charger_type_t charger = CHARGER_BATTERY; 
-        int ret = 0;
-        
-        charger = s3c_bat_info.bat_info.charging_source;
-        
-        switch (charger) {
-        case CHARGER_BATTERY:
-                ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
-                break;
-        case CHARGER_USB:
-        case CHARGER_AC:
-		if (s3c_get_bat_health() != POWER_SUPPLY_HEALTH_GOOD)
-			ret = POWER_SUPPLY_STATUS_DISCHARGING;
-		else {
-			if (s3c_bat_info.bat_info.batt_is_full)
-				ret = POWER_SUPPLY_STATUS_FULL;
-			else
-				ret = POWER_SUPPLY_STATUS_CHARGING;
-		}
-                break;
-	case CHARGER_DISCHARGE:
-		ret = POWER_SUPPLY_STATUS_DISCHARGING;
-		break;
-        default:
-                ret = POWER_SUPPLY_STATUS_UNKNOWN;
-        }
+	static int cnt = 0;
 
-	dev_dbg(dev, "%s: %s\n", __func__, status_text[ret]);
-        return ret;
-}
+	if (s3c_get_bat_health() != POWER_SUPPLY_HEALTH_GOOD)
+		goto out;
 
+	if (!s3c_bat_info.bat_info.batt_is_full || 
+		s3c_bat_info.bat_info.charging_enabled) 
+		goto out;
 
+	if (s3c_bat_info.bat_info.batt_is_recharging != -1 && bat_vol <= batt_safe_rech) {
+	//	if (++cnt >= 3) { // comment by qbanin
+			dev_info(dev, "%s: recharging(adj):%d\n", __func__,
+					bat_vol);
+			s3c_bat_info.bat_info.batt_is_recharging = 1;
+			s3c_set_chg_en(ENABLE);
+			goto out;
+	//	}
+	} else {
+		cnt = 0;
+	}
 
-static void keep_charging(int bat_vol, struct power_supply *bat_ps)
-{
-	if (s3c_bat_info.bat_info.charging_source == CHARGER_AC || s3c_bat_info.bat_info.charging_source == CHARGER_USB){
-
-		  if (!s3c_bat_info.bat_info.batt_is_full && 
-			  s3c_bat_info.bat_info.charging_enabled) 
-			  goto out;
-			  
-		  
-		  if (s3c_bat_info.bat_info.charging_enabled == 0){ 
-			  dev_info(dev, "%s: recharging(adj):%d\n", __func__,
-						  bat_vol);
-			  s3c_bat_info.bat_info.batt_is_recharging = 1;
-			  s3c_set_chg_en(ENABLE);
-			  goto out;
-		  }
-
-		  if (s3c_bat_info.bat_info.batt_is_recharging != -1 && bat_vol <= batt_safe_rech) {
-				  dev_info(dev, "%s: recharging(adj):%d\n", __func__,
-						  bat_vol);
-				  s3c_bat_info.bat_info.batt_is_recharging = 1;
-				  s3c_set_chg_en(ENABLE);
-				  goto out;
-		  }
-
-		  if (bat_vol <= batt_safe_rech ) {
-			  dev_info(dev, "%s: recharging(safe):%d\n", __func__, bat_vol);
-			  s3c_bat_info.bat_info.batt_is_recharging = 1;
-			  s3c_set_chg_en(ENABLE);
-			  goto out;
-		  }
-		  
-		  if (s3c_bat_info.bat_info.batt_is_full &&
-			  !s3c_bat_info.bat_info.charging_enabled) {
-				  dev_info(dev, "%s: recharging(safe), (adc:%d)\n",
-						  __func__, bat_vol);
-				  s3c_bat_info.bat_info.batt_is_recharging = 1;
-				  s3c_set_chg_en(ENABLE);
-		  } 
+	if (bat_vol <= batt_safe_rech ) {
+		dev_info(dev, "%s: recharging(safe):%d\n", __func__, bat_vol);
+		s3c_bat_info.bat_info.batt_is_recharging = 1;
+		s3c_set_chg_en(ENABLE);
+		goto out;
 	}
 	
 	return;
 out:
+	cnt = 0;
 	return;
 }
 
 
 #ifndef __FUEL_GAUGES_IC__
 #ifdef __ANDROID_BAT_LEVEL_CONCEPT__
+static int s3c_get_bat_level(struct power_supply *bat_ps)
+{
+	int bat_level = 0;
+	int bat_vol = s3c_read_bat(bat_ps);
 
+	s3c_bat_info.bat_info.batt_vol_adc_aver = bat_vol;
+/*
+	if(is_over_abs_time()) {
+		bat_level = 100;
+		s3c_bat_info.bat_info.batt_is_full = 1;
+		dev_info(dev, "%s: charging time is over\n", __func__);
+		s3c_set_chg_en(DISABLE);
+		goto __end__;
+	}
+*/
+#ifdef __BATTERY_COMPENSATION__
+	if (s3c_bat_info.bat_info.charging_enabled) {
+		if (bat_vol > batt_full - COMPENSATE_TA) {
+			s3c_bat_set_compesation(0, OFFSET_TA_ATTACHED,
+					COMPENSATE_TA);
+		}
+	}
+#endif /* __BATTERY_COMPENSATION__ */
+
+	keep_charging(bat_vol); // keep battery charged
+
+	if (bat_vol > batt_full) {
+		int temp = 1;	/* 100% : 4.03V ADC : 341  Offset : 45 */
+		if (bat_vol > (batt_full + temp) || 
+				s3c_bat_info.bat_info.batt_is_full)
+			bat_level = 100;
+		else
+			bat_level = 99;
+
+#ifdef __CHECK_CHG_CURRENT__
+		if (s3c_bat_info.bat_info.charging_enabled) {
+			check_chg_current(bat_ps);
+			if (!s3c_bat_info.bat_info.batt_is_full)
+				bat_level = 99;
+		}
+#endif /* __CHECK_CHG_CURRENT__ */
+		dev_dbg(dev, "%s: (full)level = %d\n", __func__, bat_level );
+	} else if (batt_full >= bat_vol && bat_vol > batt_pre_full_high) {
+		int temp = (batt_full - batt_pre_full_high) / 5;
+		if (bat_vol > (batt_pre_full_high + (temp * 4)))
+			bat_level = 99;
+		else if (bat_vol > (batt_pre_full_high + (temp * 3)))
+			bat_level = 98;
+		else if (bat_vol > (batt_pre_full_high + (temp * 2)))
+			bat_level = 97;
+		else if (bat_vol > (batt_pre_full_high + (temp * 1)))
+			bat_level = 96;
+		else
+			bat_level = 95;
+		
+	} else if (batt_pre_full_high >= bat_vol && bat_vol > batt_pre_full) {
+		int temp = (batt_pre_full_high - batt_pre_full) / 10;
+		if (bat_vol > (batt_pre_full + (temp * 9)))
+			bat_level = 94;
+		else if (bat_vol > (batt_pre_full + (temp * 8)))
+			bat_level = 93;
+		else if (bat_vol > (batt_pre_full + (temp * 7)))
+			bat_level = 92;
+		else if (bat_vol > (batt_pre_full + (temp * 6)))
+			bat_level = 91;
+		else if (bat_vol > (batt_pre_full + (temp * 5)))
+			bat_level = 90;
+		else if (bat_vol > (batt_pre_full + (temp * 4)))
+			bat_level = 89;
+		else if (bat_vol > (batt_pre_full + (temp * 3)))
+			bat_level = 88;
+		else if (bat_vol > (batt_pre_full + (temp * 2)))
+			bat_level = 87;
+		else if (bat_vol > (batt_pre_full + (temp * 1)))
+			bat_level = 86;
+		else 
+			bat_level = 85;
+		
+	} else if (batt_pre_full >= bat_vol && bat_vol > batt_almost) {
+		int temp = (batt_pre_full - batt_almost) / 15;
+		if (bat_vol > (batt_almost + (temp * 14)))
+			bat_level = 84;
+		else if (bat_vol > (batt_almost + (temp * 13)))
+			bat_level = 83;
+		else if (bat_vol > (batt_almost + (temp * 12)))
+			bat_level = 82;
+		else if (bat_vol > (batt_almost + (temp * 11)))
+			bat_level = 81;
+		else if (bat_vol > (batt_almost + (temp * 10)))
+			bat_level = 80;
+		else if (bat_vol > (batt_almost + (temp * 9)))
+			bat_level = 79;
+		else if (bat_vol > (batt_almost + (temp * 8)))
+			bat_level = 78;
+		else if (bat_vol > (batt_almost + (temp * 7)))
+			bat_level = 77;
+		else if (bat_vol > (batt_almost + (temp * 6)))
+			bat_level = 76;
+		else if (bat_vol > (batt_almost + (temp * 5)))
+			bat_level = 75;
+		else if (bat_vol > (batt_almost + (temp * 4)))
+			bat_level = 74;
+		else if (bat_vol > (batt_almost + (temp * 3)))
+			bat_level = 73;
+		else if (bat_vol > (batt_almost + (temp * 2)))
+			bat_level = 72;
+		else if (bat_vol > (batt_almost + (temp)))
+			bat_level = 71;
+		else
+			bat_level = 70;
+
+//		if (s3c_bat_info.bat_info.batt_is_recharging)
+//			bat_level = 100;
+
+		dev_dbg(dev, "%s: (almost)level = %d\n", __func__, bat_level);
+	} else if (batt_almost >= bat_vol && bat_vol > batt_high) {
+		int temp = (batt_almost - batt_high) / 20;
+		if (bat_vol > (batt_high + (temp * 19 )))
+			bat_level = 69;
+		else if (bat_vol > (batt_high + (temp * 18)))
+			bat_level = 68;
+		else if (bat_vol > (batt_high + (temp * 17)))
+			bat_level = 67;
+		else if (bat_vol > (batt_high + (temp * 16)))
+			bat_level = 66;
+		else if (bat_vol > (batt_high + (temp * 15)))
+			bat_level = 65;
+		else if (bat_vol > (batt_high + (temp * 14)))
+			bat_level = 64;
+		else if (bat_vol > (batt_high + (temp * 13)))
+			bat_level = 63;
+		else if (bat_vol > (batt_high + (temp * 12)))
+			bat_level = 62;
+		else if (bat_vol > (batt_high + (temp * 11)))
+			bat_level = 61;
+		else if (bat_vol > (batt_high + (temp * 10)))
+			bat_level = 60;
+		else if (bat_vol > (batt_high + (temp * 9)))
+			bat_level = 59;              		
+		else if (bat_vol > (batt_high + (temp * 8)))
+			bat_level = 58;
+		else if (bat_vol > (batt_high + (temp * 7)))
+			bat_level = 57;
+		else if (bat_vol > (batt_high + (temp * 6)))
+			bat_level = 56;
+		else if (bat_vol > (batt_high + (temp * 5)))
+			bat_level = 55;
+		else if (bat_vol > (batt_high + (temp * 4)))
+			bat_level = 54;
+		else if (bat_vol > (batt_high + (temp * 3)))
+			bat_level = 53;
+		else if (bat_vol > (batt_high + (temp * 2)))
+			bat_level = 52;
+		else if (bat_vol > (batt_high + (temp)))
+			bat_level = 51;
+		else
+			bat_level = 50;
+		
+		dev_dbg(dev, "%s: (high)level = %d\n", __func__, bat_level );
+	} else if (batt_high >= bat_vol && bat_vol > batt_medium) {
+		int temp = (batt_high - batt_medium) / 20;
+		if (bat_vol > (batt_medium + (temp * 19)))
+			bat_level = 49;
+		else if (bat_vol > (batt_medium + (temp * 18)))
+			bat_level = 48;
+		else if (bat_vol > (batt_medium + (temp * 17)))
+			bat_level = 47;
+		else if (bat_vol > (batt_medium + (temp * 16)))
+			bat_level = 46;
+		else if (bat_vol > (batt_medium + (temp * 15)))
+			bat_level = 45;
+		else if (bat_vol > (batt_medium + (temp * 14)))
+			bat_level = 44;
+		else if (bat_vol > (batt_medium + (temp * 13)))
+			bat_level = 43;
+		else if (bat_vol > (batt_medium + (temp * 12)))
+			bat_level = 42;
+		else if (bat_vol > (batt_medium + (temp * 11)))
+			bat_level = 41;
+		else if (bat_vol > (batt_medium + (temp * 10)))
+			bat_level = 40;
+		else if (bat_vol > (batt_medium + (temp * 9)))
+			bat_level = 39;              		
+		else if (bat_vol > (batt_medium + (temp * 8)))
+			bat_level = 38;
+		else if (bat_vol > (batt_medium + (temp * 7)))
+			bat_level = 37;
+		else if (bat_vol > (batt_medium + (temp * 6)))
+			bat_level = 36;
+		else if (bat_vol > (batt_medium + (temp * 5)))
+			bat_level = 35;
+		else if (bat_vol > (batt_medium + (temp * 4)))
+			bat_level = 34;
+		else if (bat_vol > (batt_medium + (temp * 3)))
+			bat_level = 33;
+		else if (bat_vol > (batt_medium + (temp * 2)))
+			bat_level = 32;
+		else if (bat_vol > (batt_medium + (temp)))
+			bat_level = 31;
+		else
+			bat_level = 30;
+		
+		dev_dbg(dev, "%s: (med)level = %d\n", __func__, bat_level);
+	} else if (batt_medium >= bat_vol && bat_vol > batt_low) {
+		int temp = (batt_medium - batt_low) / 20;
+		if (bat_vol > (batt_low + (temp * 19)))
+			bat_level = 29;
+		else if (bat_vol > (batt_low + (temp * 18)))
+			bat_level = 28;
+		else if (bat_vol > (batt_low + (temp * 17)))
+			bat_level = 27;
+		else if (bat_vol > (batt_low + (temp * 16)))
+			bat_level = 26;
+		else if (bat_vol > (batt_low + (temp * 15)))
+			bat_level = 25;
+		else if (bat_vol > (batt_low + (temp * 14)))
+			bat_level = 24;
+		else if (bat_vol > (batt_low + (temp * 13)))
+			bat_level = 23;
+		else if (bat_vol > (batt_low + (temp * 12)))
+			bat_level = 22;
+		else if (bat_vol > (batt_low + (temp * 11)))
+			bat_level = 21;
+		else if (bat_vol > (batt_low + (temp * 10)))
+			bat_level = 20;
+		else if (bat_vol > (batt_low + (temp * 9)))
+			bat_level = 19;              		
+		else if (bat_vol > (batt_low + (temp * 8)))
+			bat_level = 18;
+		else if (bat_vol > (batt_low + (temp * 7)))
+			bat_level = 17;
+		else if (bat_vol > (batt_low + (temp * 6)))
+			bat_level = 16;
+		else if (bat_vol > (batt_low + (temp * 5)))
+			bat_level = 15;
+		else if (bat_vol > (batt_low + (temp * 4)))
+			bat_level = 14;
+		else if (bat_vol > (batt_low + (temp * 3)))
+			bat_level = 13;
+		else if (bat_vol > (batt_low + (temp * 2)))
+			bat_level = 12;
+		else if (bat_vol > (batt_low + (temp)))
+			bat_level = 11;
+		else
+			bat_level = 10;
+		
+		dev_dbg(dev, "%s: (low)level = %d\n", __func__, bat_level);
+	} else if (batt_low >= bat_vol && bat_vol > batt_critical) {
+		int temp = (batt_low - batt_critical) / 5 ;
+		if (bat_vol > (batt_critical + (temp * 4)))
+			bat_level = 9;
+		else if (bat_vol > (batt_critical + (temp * 3)))
+			bat_level = 8;
+		else if (bat_vol > (batt_critical + (temp * 2)))
+			bat_level = 7;
+		else if (bat_vol > (batt_critical + (temp)))
+			bat_level = 6;
+		else
+			bat_level = 5;
+
+		dev_dbg(dev, "%s: (cri)level = %d, vol = %d\n", __func__,
+				bat_level, bat_vol);
+
+	} else if (batt_critical >= bat_vol && bat_vol > batt_min) {
+		int temp = (batt_low - batt_critical) /2 ;
+		if (bat_vol > (batt_min + temp))
+			bat_level = 4;
+		else
+			bat_level = 3;
+		dev_info(dev, "%s: (min)level = %d, vol = %d\n", __func__,
+				bat_level, bat_vol);
+
+	} else if (batt_min >= bat_vol && bat_vol > batt_off) {
+		int temp = (batt_critical - batt_off) /2 ;
+		if (bat_vol > (batt_off + temp))
+			bat_level = 2;
+		else
+			bat_level = 1;
+		dev_info(dev, "%s: (off)level = %d, vol = %d\n", __func__,
+				bat_level, bat_vol);
+	} else if (batt_off >= bat_vol)  {
+		bat_level = 0;
+		dev_info(dev, "%s: (off)level = %d, vol = %d", __func__,
+				bat_level, bat_vol);
+	}
+	dev_dbg(dev, "%s: level = %d\n", __func__, bat_level);
+
+__end__:
+	dev_dbg(dev, "%s: bat_vol = %d, level = %d, is_full = %d\n",
+			__func__, bat_vol, bat_level, 
+			s3c_bat_info.bat_info.batt_is_full);
+//#ifdef __TEMP_ADC_VALUE__
+//	return 80;
+/#else
+	return bat_level;
+//#endif /* __TEMP_ADC_VALUE__ */
+
+}
 #else /* __ANDROID_BAT_LEVEL_CONCEPT__ */
 
 
@@ -664,16 +915,10 @@ out:
 static int s3c_get_bat_level(struct power_supply *bat_ps)
 {
 	int bat_level = 0;
-	
 	int bat_vol = s3c_read_bat(bat_ps);
-	
-	
-	
-	s3c_bat_info.bat_info.batt_vol_adc_aver = bat_vol;
-	
-	
 
-	
+	s3c_bat_info.bat_info.batt_vol_adc_aver = bat_vol;
+
 /*	if(is_over_abs_time()) {
 		bat_level = 100;
 		s3c_bat_info.bat_info.batt_is_full = 1;
@@ -683,10 +928,10 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 	}
 */
 
-	keep_charging(bat_vol, bat_ps); // keep battery charged
+	keep_charging(bat_vol); // keep battery charged
 #ifdef __BATTERY_COMPENSATION__
 	if (s3c_bat_info.bat_info.charging_enabled) {
-		if (bat_vol > batt_full - COMPENSATE_TA) {
+		if (bat_vol > batt_almost - COMPENSATE_TA) {
 			s3c_bat_set_compesation(0, OFFSET_TA_ATTACHED,
 					COMPENSATE_TA);
 		}
@@ -703,22 +948,25 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 		}
 #endif /* __CHECK_CHG_CURRENT__ */
 #ifdef __ADJUST_RECHARGE_ADC__
-//		check_recharging_bat(bat_vol);
+		check_recharging_bat(bat_vol);
 #endif /* __ADJUST_RECHARGE_ADC__ */
 		dev_dbg(dev, "%s: (full)level = %d\n", __func__, bat_level );
-	} else if (batt_full >= bat_vol && bat_vol > batt_pre_full) {
-		int temp = (batt_full - batt_pre_full) / 15;
-		if (bat_vol > (batt_pre_full + (temp * 14)))
+		} else if (batt_full >= bat_vol && bat_vol > batt_pre_full_high) {
+		int temp = (batt_full - batt_pre_full_high) / 5;
+		if (bat_vol > (batt_pre_full_high + (temp * 4)))
 			bat_level = 99;
-		else if (bat_vol > (batt_pre_full + (temp * 13)))
+		else if (bat_vol > (batt_pre_full_high + (temp * 3)))
 			bat_level = 98;
-		else if (bat_vol > (batt_pre_full + (temp * 12)))
+		else if (bat_vol > (batt_pre_full_high + (temp * 2)))
 			bat_level = 97;
-		else if (bat_vol > (batt_pre_full + (temp * 11)))
+		else if (bat_vol > (batt_pre_full_high + (temp * 1)))
 			bat_level = 96;
-		else if (bat_vol > (batt_pre_full + (temp * 10)))
+		else
 			bat_level = 95;
-		else if (bat_vol > (batt_pre_full + (temp * 9)))
+		
+	} else if (batt_pre_full_high >= bat_vol && bat_vol > batt_pre_full) {
+		int temp = (batt_pre_full_high - batt_pre_full) / 10;
+		if (bat_vol > (batt_pre_full + (temp * 9)))
 			bat_level = 94;
 		else if (bat_vol > (batt_pre_full + (temp * 8)))
 			bat_level = 93;
@@ -909,38 +1157,6 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 			bat_level = 10;
 		
 		dev_dbg(dev, "%s: (low)level = %d\n", __func__, bat_level);
-/*		
-		} else if (batt_low >= bat_vol && bat_vol > batt_off) {
-		int temp = (batt_low - batt_off) / 10 ;
-		if (bat_vol > (batt_off + (temp * 9)))
-			bat_level = 9;
-		else if (bat_vol > (batt_off + (temp * 8)))
-			bat_level = 8;
-		else if (bat_vol > (batt_off + (temp * 7)))
-			bat_level = 7;
-		else if (bat_vol > (batt_off + (temp * 6)))
-			bat_level = 6;
-		else if (bat_vol > (batt_off + (temp * 5)))
-			bat_level = 5;
-		else if (bat_vol > (batt_off + (temp * 4)))
-			bat_level = 4;
-		else if (bat_vol > (batt_off + (temp * 3)))
-			bat_level = 3;
-		else if (bat_vol > (batt_off + (temp * 2)))
-			bat_level = 2;
-		else if (bat_vol > (batt_off + (temp * 1)))
-			bat_level = 1;
-		else {
-			bat_level = 0;
-			//dev_info(dev, "%s: (off)level = %d, vol = %d", __func__,
-				//bat_level, bat_vol);
-		      }
-		 
-		}
-		
-*/		
-
- 		
 	} else if (batt_low >= bat_vol && bat_vol > batt_critical) {
 		int temp = (batt_low - batt_critical) / 5 ;
 		if (bat_vol > (batt_critical + (temp * 4)))
@@ -953,14 +1169,12 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 			bat_level = 6;
 		else
 			bat_level = 5;
-		
-
 
 		dev_dbg(dev, "%s: (cri)level = %d, vol = %d\n", __func__,
 				bat_level, bat_vol);
 
 	} else if (batt_critical >= bat_vol && bat_vol > batt_min) {
-		int temp = (batt_critical - batt_min) /2 ;
+		int temp = (batt_low - batt_critical) /2 ;
 		if (bat_vol > (batt_min + temp))
 			bat_level = 4;
 		else
@@ -969,7 +1183,7 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 				bat_level, bat_vol);
 
 	} else if (batt_min >= bat_vol && bat_vol > batt_off) {
-		int temp = (batt_min - batt_off) /2 ;
+		int temp = (batt_critical - batt_off) /2 ;
 		if (bat_vol > (batt_off + temp))
 			bat_level = 2;
 		else
@@ -981,22 +1195,15 @@ static int s3c_get_bat_level(struct power_supply *bat_ps)
 		dev_info(dev, "%s: (off)level = %d, vol = %d", __func__,
 				bat_level, bat_vol);
 	}
-	
-
 	dev_dbg(dev, "%s: level = %d\n", __func__, bat_level);
 
- //__end__:
-/*	if (bat_vol > batt_max) {
-	  dev_dbg(dev, "%s: bat_vol = %d, level = %d, is_full = %d\n",
+__end__:
+	dev_dbg(dev, "%s: bat_vol = %d, level = %d, is_full = %d\n",
 			__func__, bat_vol, bat_level, 
 			s3c_bat_info.bat_info.batt_is_full);
-	}
-*/
 //#ifdef __TEMP_ADC_VALUE__
 //	return 80;
 //#else
-
-
 	return bat_level;
 //#endif /* __TEMP_ADC_VALUE__ */
 }
@@ -1300,6 +1507,38 @@ __map_temperature__:
 	return temp;
 }
 
+static int s3c_bat_get_charging_status(void)
+{
+        charger_type_t charger = CHARGER_BATTERY; 
+        int ret = 0;
+        
+        charger = s3c_bat_info.bat_info.charging_source;
+        
+        switch (charger) {
+        case CHARGER_BATTERY:
+                ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
+                break;
+        case CHARGER_USB:
+        case CHARGER_AC:
+		if (s3c_get_bat_health() != POWER_SUPPLY_HEALTH_GOOD)
+			ret = POWER_SUPPLY_STATUS_DISCHARGING;
+		else {
+			if (s3c_bat_info.bat_info.batt_is_full)
+				ret = POWER_SUPPLY_STATUS_FULL;
+			else
+				ret = POWER_SUPPLY_STATUS_CHARGING;
+		}
+                break;
+	case CHARGER_DISCHARGE:
+		ret = POWER_SUPPLY_STATUS_DISCHARGING;
+		break;
+        default:
+                ret = POWER_SUPPLY_STATUS_UNKNOWN;
+        }
+
+	dev_dbg(dev, "%s: %s\n", __func__, status_text[ret]);
+        return ret;
+}
 
 static int s3c_bat_get_property(struct power_supply *bat_ps, 
 		enum power_supply_property psp,
@@ -1601,6 +1840,7 @@ static void s3c_bat_set_vol_cal(int batt_cal)
 
 	batt_max = batt_cal + BATT_MAXIMUM;
 	batt_full = batt_cal + BATT_FULL;
+	batt_pre_full_high = batt_cal + BATT_PRE_FULL_HIGH;
 	batt_pre_full = batt_cal + BATT_PRE_FULL;
 	batt_safe_rech = batt_cal + BATT_SAFE_RECHARGE;
 	batt_almost = batt_cal + BATT_ALMOST_FULL;
@@ -2114,11 +2354,6 @@ static void s3c_bat_status_update(struct power_supply *bat_ps)
 			s3c_bat_info.bat_info.level = old_level;
 	}
 	s3c_bat_info.bat_info.batt_vol = s3c_get_bat_vol(bat_ps);
-	
-	
-	
-	
-	
 
 #ifdef __BOARD_REV_ADC__
 	if (!is_end_board_rev_adc)
@@ -2387,6 +2622,7 @@ static int __devinit s3c_bat_probe(struct platform_device *pdev)
 
 	batt_max = BATT_CAL + BATT_MAXIMUM;
 	batt_full = BATT_CAL + BATT_FULL;
+	batt_pre_full_high = BATT_CAL + BATT_PRE_FULL_HIGH;
 	batt_pre_full = BATT_CAL + BATT_PRE_FULL;
 	batt_safe_rech = BATT_CAL + BATT_SAFE_RECHARGE;
 	batt_almost = BATT_CAL + BATT_ALMOST_FULL;
@@ -2564,6 +2800,6 @@ static void __exit s3c_bat_exit(void)
 module_init(s3c_bat_init);
 module_exit(s3c_bat_exit);
 
-MODULE_AUTHOR("Minsung Kim <ms925.kim@samsung.com>, modified by QBANIN");
+MODULE_AUTHOR("Minsung Kim <ms925.kim@samsung.com>");
 MODULE_DESCRIPTION("S3C6410 battery driver");
 MODULE_LICENSE("GPL");
