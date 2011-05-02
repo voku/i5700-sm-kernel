@@ -331,11 +331,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS	= -DMODULE -pipe -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s
+MODFLAGS	= -DMODULE -pipe -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s -march=armv6zk -mfloat-abi=hard -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -pipe -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -mfloat-abi=hard --param l1-cache-size=16 --param l1-cache-line-size=32 -ftree-vectorize -fomit-frame-pointer -mcpu=arm1176jzf-s -mfpu=vfp -mthumb-interwork -DSP -DROLL
+CFLAGS_KERNEL	= -pipe -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -mfloat-abi=hard --param l1-cache-size=16 --param l1-cache-line-size=32 -ftree-vectorize -fomit-frame-pointer -mcpu=arm1176jzf-s -mfpu=vfp -mthumb-interwork -DSP -DROLL
 AFLAGS_KERNEL	=
 
 

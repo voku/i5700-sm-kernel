@@ -1,0 +1,7 @@
+#!/bin/sh
+
+make KDIR=/home/lukasz/i5700.2/kernel/v6 CFLAGS="-g -O2"
+/home/lukasz/ctng/opt/arm-spica-linux-uclibcgnueabi/bin/arm-spica-linux-uclibcgnueabi-strip --strip-unneeded *.ko
+cp *.ko /home/lukasz/i5700.2/i5700-initramfs-froyo-2.6.29.6/lib/modules
+
+

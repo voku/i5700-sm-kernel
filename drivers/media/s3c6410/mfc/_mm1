@@ -1,0 +1,6 @@
+#!/bin/sh
+
+make KDIR=/home/lars/spica/new_kernel/SM-kernel CFLAGS="-O3 -marm -mfpu=vfp -mtune=arm1176jzf-s"
+/usr/bin/arm-linux-gnueabihf-strip --strip-unneeded *.ko
+cp *.ko /home/lars/spica/new_kernel/initramfs/lib/modules
+

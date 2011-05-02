@@ -67,7 +67,7 @@ extern void __rcu_init(void);
  */
 static inline long rcu_batches_completed(void)
 {
-	return rcu_ctrlblk.completed;
+	return 0;
 }
 
 /*
@@ -75,7 +75,7 @@ static inline long rcu_batches_completed(void)
  */
 static inline long rcu_batches_completed_bh(void)
 {
-	return rcu_bh_ctrlblk.completed;
+	return 0;
 }
 
 static inline int rcu_pending(int cpu)

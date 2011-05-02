@@ -17,7 +17,7 @@
  *
  * Copyright IBM Corporation, 2008
  *
- * Author: Paul E. McKenney <paulmck <at> linux.vnet.ibm.com>
+ * Author: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
  *
  * For detailed explanation of Read-Copy Update mechanism see -
  * 		Documentation/RCU
@@ -39,14 +39,12 @@
 
 /* Definition for rcupdate control block. */
 struct rcu_ctrlblk rcu_ctrlblk = {
-	.completed = -300,
 	.rcucblist = NULL,
 	.donetail = &rcu_ctrlblk.rcucblist,
 	.curtail = &rcu_ctrlblk.rcucblist,
 };
 EXPORT_SYMBOL_GPL(rcu_ctrlblk);
 struct rcu_ctrlblk rcu_bh_ctrlblk = {
-	.completed = -300,
 	.rcucblist = NULL,
 	.donetail = &rcu_bh_ctrlblk.rcucblist,
 	.curtail = &rcu_bh_ctrlblk.rcucblist,
@@ -144,7 +142,6 @@ static void __rcu_process_callbacks(struct rcu_ctrlblk *rcp)
 
 	/* Move the ready-to-invoke callbacks to a local list. */
 	local_irq_save(flags);
-	rcp->completed++;
 	list = rcp->rcucblist;
 	rcp->rcucblist = *rcp->donetail;
 	*rcp->donetail = NULL;
@@ -178,17 +175,9 @@ static void rcu_process_callbacks(struct softirq_action *unused)
  * state, and so on a UP system, synchronize_rcu() need do nothing.
  *
  * Cool, huh?  (Due to Josh Triplett.)
- *
- * However, we do update the grace-period counter to prevent rcutorture
- * from hammering us.
  */
 void synchronize_rcu(void)
 {
-	unsigned long flags;
-
-	local_irq_save(flags);
-	rcu_ctrlblk.completed++;
-	local_irq_restore(flags);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 
