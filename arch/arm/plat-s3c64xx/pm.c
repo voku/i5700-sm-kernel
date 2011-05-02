@@ -180,7 +180,7 @@ int s3c_wait_blk_pwr_ready(unsigned int config)
 	int ret = 0;
 	
 	/* Wait max 20 ms */
-	timeout = 20;
+	timeout = 5;
 	while (!((blk_pwr_stat = __raw_readl(S3C_BLK_PWR_STAT)) & config)) {
 		if (timeout == 0) {
 			printk(KERN_ERR "config %x: blk power never ready.\n", config);

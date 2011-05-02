@@ -55,12 +55,12 @@ static size_t lowmem_minfree[6] = {
 static int lowmem_minfree_size = 4;
 
 static size_t lowmem_minfile[6] = {
-	1536,
-	2048,
+	3584,
 	4096,
-	5120,
-	5632,
-	6144
+	6144,
+	13056,
+	21160,
+	24576
 };
 static int lowmem_minfile_size = 6;
 
@@ -90,12 +90,9 @@ static int
 task_notify_func(struct notifier_block *self, unsigned long val, void *data)
 {
 	struct task_struct *task = data;
-	if (task == lowmem_deathpending) {
+	if (task == lowmem_deathpending) 
 		lowmem_deathpending = NULL;
-		task_free_unregister(&task_nb);
-		lowmem_print(2, "deathpending end %d (%s)\n",
-			task->pid, task->comm);
-	}
+
 	return NOTIFY_OK;
 }
 
@@ -162,8 +159,6 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 		dump_deathpending(lowmem_deathpending);
 		if (lowmem_deathpending_retries++ < lowmem_max_deathpending_retries)
 			return 0;
-		else
-			task_free_unregister(&task_nb);
 	}
 
 	if (lowmem_adj_size < array_size)
@@ -244,7 +239,6 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 		if (!ignore_lowmem_deathpending) {
 			lowmem_deathpending = selected;
 			lowmem_deathpending_retries = 0;
-			task_free_register(&task_nb);
 		}
 		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
@@ -266,6 +260,7 @@ static struct shrinker lowmem_shrinker = {
 
 static int __init lowmem_init(void)
 {
+	task_free_register(&task_nb);
 	register_shrinker(&lowmem_shrinker);
 	return 0;
 }
@@ -273,6 +268,7 @@ static int __init lowmem_init(void)
 static void __exit lowmem_exit(void)
 {
 	unregister_shrinker(&lowmem_shrinker);
+	task_free_unregister(&task_nb);
 }
 
 module_param_named(cost, lowmem_shrinker.seeks, int, S_IRUGO | S_IWUSR);

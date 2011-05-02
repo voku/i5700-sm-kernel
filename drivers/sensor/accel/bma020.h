@@ -825,7 +825,7 @@ int bma020_read_reg(unsigned char , unsigned char *, unsigned char);
 
 int bma020_write_reg(unsigned char , unsigned char*, unsigned char );
 
-bma020acc_t bma020_calibrate();
+bma020acc_t bma020_calibrate(void);
 
 
 

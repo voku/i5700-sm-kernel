@@ -273,7 +273,7 @@ static int __init android_bind(struct usb_composite_dev *cdev)
 	
 #if USBCV_CH9_REMOTE_WAKE_UP_TEST 
 	if (gadget->ops->wakeup)
-		android_config.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
+		android_config_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 #endif
 
 	/* register our configuration */

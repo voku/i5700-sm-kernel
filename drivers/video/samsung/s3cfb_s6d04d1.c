@@ -116,6 +116,9 @@ static void s3cfb_set_fimd_info(void)
 #if defined(CONFIG_FB_S3C_VIRTUAL_SCREEN)
 	s3c_fimd.xres_virtual = S3C_FB_HRES_VIRTUAL;
 	s3c_fimd.yres_virtual = S3C_FB_VRES_VIRTUAL;
+#elif defined(CONFIG_FB_S3C_DOUBLE_BUFFERING)
+	s3c_fimd.xres_virtual = S3C_FB_HRES;
+	s3c_fimd.yres_virtual = S3C_FB_VRES * 2;
 #else
 	s3c_fimd.xres_virtual = S3C_FB_HRES;
 	s3c_fimd.yres_virtual = S3C_FB_VRES;
@@ -129,6 +132,9 @@ static void s3cfb_set_fimd_info(void)
 #if defined(CONFIG_FB_S3C_VIRTUAL_SCREEN)
 	s3c_fimd.osd_xres_virtual = S3C_FB_HRES_OSD_VIRTUAL;
 	s3c_fimd.osd_yres_virtual = S3C_FB_VRES_OSD_VIRTUAL;
+#elif defined(CONFIG_FB_S3C_DOUBLE_BUFFERING)
+	s3c_fimd.osd_xres_virtual = S3C_FB_HRES_OSD;
+	s3c_fimd.osd_yres_virtual = S3C_FB_VRES_OSD * 2;
 #else
 	s3c_fimd.osd_xres_virtual = S3C_FB_HRES_OSD;
 	s3c_fimd.osd_yres_virtual = S3C_FB_VRES_OSD;

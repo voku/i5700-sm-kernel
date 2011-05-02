@@ -37,7 +37,7 @@ MAKEFLAGS += -rR --no-print-directory
 
 ifdef V
   ifeq ("$(origin V)", "command line")
-    KBUILD_VERBOSE = $(V)
+	KBUILD_VERBOSE = $(V)
   endif
 endif
 ifndef KBUILD_VERBOSE
@@ -56,7 +56,7 @@ endif
 
 ifdef C
   ifeq ("$(origin C)", "command line")
-    KBUILD_CHECKSRC = $(C)
+	KBUILD_CHECKSRC = $(C)
   endif
 endif
 ifndef KBUILD_CHECKSRC
@@ -71,7 +71,7 @@ ifdef SUBDIRS
 endif
 ifdef M
   ifeq ("$(origin M)", "command line")
-    KBUILD_EXTMOD := $(M)
+	KBUILD_EXTMOD := $(M)
   endif
 endif
 
@@ -100,7 +100,7 @@ ifeq ($(KBUILD_SRC),)
 # Do we want to locate output files in a separate directory?
 ifdef O
   ifeq ("$(origin O)", "command line")
-    KBUILD_OUTPUT := $(O)
+	KBUILD_OUTPUT := $(O)
   endif
 endif
 
@@ -117,7 +117,7 @@ ifneq ($(KBUILD_OUTPUT),)
 saved-output := $(KBUILD_OUTPUT)
 KBUILD_OUTPUT := $(shell cd $(KBUILD_OUTPUT) && /bin/pwd)
 $(if $(KBUILD_OUTPUT),, \
-     $(error output directory "$(saved-output)" does not exist))
+	 $(error output directory "$(saved-output)" does not exist))
 
 PHONY += $(MAKECMDGOALS) sub-make
 
@@ -191,7 +191,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH			:= arm
-CROSS_COMPILE  := /opt/ctng/bin/arm-spica-linux-uclibcgnueabi-
+CROSS_COMPILE  := /usr/bin/arm-linux-gnueabihf-
 #CROSS_COMPILE	:= /usr/local/arm/4.3.1-eabi-armv6/usr/bin/arm-linux-
 #CROSS_COMPILE	:= $(shell if [ -f .cross_compile ]; then \
 					cat .cross_compile; \
@@ -203,22 +203,22 @@ SRCARCH 	:= $(ARCH)
 
 # Additional ARCH settings for x86
 ifeq ($(ARCH),i386)
-        SRCARCH := x86
+		SRCARCH := x86
 endif
 ifeq ($(ARCH),x86_64)
-        SRCARCH := x86
+		SRCARCH := x86
 endif
 
 # Additional ARCH settings for sparc
 ifeq ($(ARCH),sparc64)
-       SRCARCH := sparc
+	   SRCARCH := sparc
 endif
 
 # Where to locate arch specific headers
 hdr-arch  := $(SRCARCH)
 
 ifeq ($(ARCH),m68knommu)
-       hdr-arch  := m68k
+	   hdr-arch  := m68k
 endif
 
 KCONFIG_CONFIG	?= .config
@@ -230,8 +230,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wstrict-prototypes -O3 -fomit-frame-pointer
-HOSTCXXFLAGS = -O3
+HOSTCFLAGS   = -Wall -Wstrict-prototypes -Ofast -fomit-frame-pointer
+HOSTCXXFLAGS = -Ofast
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -331,11 +331,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS	= -DMODULE -O3 -marm -mfpu=vfp -mtune=arm1176jzf-s
+MODFLAGS	= -DMODULE -pipe -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -O3 -marm -mfpu=vfp -mtune=arm1176jzf-s
+CFLAGS_KERNEL	= -pipe -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -mfloat-abi=hard --param l1-cache-size=16 --param l1-cache-line-size=32 -ftree-vectorize -fomit-frame-pointer -mcpu=arm1176jzf-s -mfpu=vfp -mthumb-interwork -DSP -DROLL
 AFLAGS_KERNEL	=
 
 
@@ -527,7 +527,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -O3
+KBUILD_CFLAGS	+= -Ofast
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile

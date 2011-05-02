@@ -306,11 +306,6 @@ config FB_S3C_BPP_24
 	bool "24 BPP"
 	---help---
 	TBA
-
-config FB_S3C_BPP_32
-	bool "32 BPP"
-	---help---
-	TBA
 endchoice
 
 config FB_S3C_NUM
@@ -330,6 +325,22 @@ config FB_S3C_VIRTUAL_SCREEN
 
 config FB_S3C_DOUBLE_BUFFERING
 	bool "Enable Double Buffering"
+	depends on FB_S3C_BPP
+
+	default n
+	---help---
+	TBA
+
+config FB_S3C_SHOW_LOGO
+	bool "Show full screen logo with progress bar"
+	depends on FB_S3C_BPP
+
+	default y
+	---help---
+	TBA
+
+config FB_S3C_KEEP_POWER_ON_SHUTDOWN
+	bool "Don't disable LCD screen on system shutdown"
 	depends on FB_S3C_BPP
 
 	default n

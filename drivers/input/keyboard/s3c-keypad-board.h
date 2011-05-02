@@ -21,10 +21,8 @@ static void __iomem *key_base;
 #define MAX_KEYPAD_NR   (KEYPAD_COLUMNS * KEYPAD_ROWS)
 #define MAX_KEYMASK_NR	32
 
-#if 1	// Temporary Code by SYS.LSI
 #define ENDCALL_KEY 249
 #define HOLD_KEY 217
-#endif
 
 u32 g_board_num = CONFIG_SPICA_REV;
 

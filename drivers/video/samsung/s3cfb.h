@@ -80,7 +80,9 @@ extern int s3c6410_timer_setup (int channel, int usec, unsigned long g_tcnt, uns
 #define S3C_FB_VS_MOVE_DOWN		18
 #define S3CFB_ALPHA_MODE_PLANE		0
 #define S3CFB_ALPHA_MODE_PIXEL		1
+#ifdef CONFIG_FB_S3C_SHOW_LOGO
 #define S3C_FB_DISPLAY_LOGO
+#endif
 
 #if defined(CONFIG_MACH_SPICA)
 	#define S3C_FB_USE_CLK_DIRECTED		// KSS_2009-09-03 : Change LCD Dot Clk
@@ -505,7 +507,7 @@ extern void s3cfb_start_lcd(void);
 extern void s3cfb_stop_lcd(void);
 extern int s3cfb_suspend(struct platform_device *dev, pm_message_t state);
 extern int s3cfb_resume(struct platform_device *dev);
-extern int s3cfb_shutdown(struct platform_device *dev);	
+extern void s3cfb_shutdown(struct platform_device *dev);
 extern int s3cfb_spi_gpio_request(int ch);
 extern void s3cfb_spi_lcd_den(int ch, int value);
 extern void s3cfb_spi_lcd_dseri(int ch, int value);

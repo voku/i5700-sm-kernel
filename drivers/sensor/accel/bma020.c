@@ -25,7 +25,7 @@ int bma020_init(bma020_t *bma020)
 
 }
 
-int bma020_soft_reset() 
+int bma020_soft_reset(void) 
 {
 	int comres;
 	unsigned char data=0;

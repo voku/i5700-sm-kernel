@@ -32,11 +32,6 @@
 #include "s3c-keypad.h"
 #include "s3c-keypad-board.h"
 
-#ifdef CONFIG_CPU_FREQ 
-#include <plat/s3c64xx-dvfs.h>
-#endif
-
-
 
 //[ <<yamaia><system><JKCha>
 #include <linux/wakelock.h>	
@@ -230,9 +225,6 @@ static void keypad_timer_handler(unsigned long data)
 
 static irqreturn_t s3c_keypad_isr(int irq, void *dev_id)
 {
-#ifdef  CONFIG_CPU_FREQ
-	set_dvfs_perf_level();
-#endif
 
 	wake_lock(&s3c_key_wake_lock); // <<yamaia><system><JKCha> : wake lock for keypad scan operation complete
 	
@@ -258,9 +250,6 @@ static irqreturn_t slide_int_handler(int irq, void *dev_id)
 	struct s3c_keypad_slide *slide      = s3c_keypad->extra->slide;
 	int state;
 
-#ifdef  CONFIG_CPU_FREQ
-	set_dvfs_perf_level();
-#endif
 	state = gpio_get_value(slide->gpio) ^ slide->state_upset;
 	DPRINTK(": changed Slide state (%d)\n", state);
 
@@ -280,9 +269,6 @@ static irqreturn_t gpio_int_handler(int irq, void *dev_id)
 
        	DPRINTK(": gpio interrupt (IRQ: %d)\n", irq);
 
-#ifdef  CONFIG_CPU_FREQ
-	set_dvfs_perf_level();
-#endif
 	for (i=0; i<extra->gpio_key_num; i++)
 	{
 		if (gpio_key[i].eint == irq)

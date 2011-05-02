@@ -211,7 +211,7 @@ struct snd_soc_dai {
 
 	/* DAI runtime info */
 	struct snd_pcm_runtime *runtime;
-	struct snd_soc_codec *codec;
+	// struct snd_soc_codec *codec; // by voku 
 	unsigned int active;
 	unsigned char pop_wait:1;
 	void *dma_data;
