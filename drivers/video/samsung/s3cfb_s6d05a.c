@@ -93,9 +93,9 @@ EXPORT_SYMBOL(backlight_level_ctrl);
 static void s3cfb_set_fimd_info(void)
 {
 	s3c_fimd.dithmode	= S3C_DITHMODE_RDITHPOS_6BIT |
-				  S3C_DITHMODE_GDITHPOS_6BIT |
-				  S3C_DITHMODE_BDITHPOS_6BIT |
-				  S3C_DITHMODE_DITHERING_ENABLE;
+						  S3C_DITHMODE_GDITHPOS_6BIT |
+						  S3C_DITHMODE_BDITHPOS_6BIT |
+						  S3C_DITHMODE_DITHERING_ENABLE;
 
 	s3c_fimd.vidcon1    = S3C_VIDCON1_IVCLK_RISE_EDGE | 
 						  S3C_VIDCON1_IHSYNC_INVERT |

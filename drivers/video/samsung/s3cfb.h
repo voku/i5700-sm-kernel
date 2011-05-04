@@ -507,7 +507,7 @@ extern void s3cfb_start_lcd(void);
 extern void s3cfb_stop_lcd(void);
 extern int s3cfb_suspend(struct platform_device *dev, pm_message_t state);
 extern int s3cfb_resume(struct platform_device *dev);
-extern void s3cfb_shutdown(struct platform_device *dev);
+extern void s3cfb_shutdown(struct platform_device *dev);	
 extern int s3cfb_spi_gpio_request(int ch);
 extern void s3cfb_spi_lcd_den(int ch, int value);
 extern void s3cfb_spi_lcd_dseri(int ch, int value);
