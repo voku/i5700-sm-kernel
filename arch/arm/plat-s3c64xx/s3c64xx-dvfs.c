@@ -71,30 +71,30 @@ int uv_procfile_read(char *buffer,
 
 
 static struct cpufreq_frequency_table freq_table_532MHz[] = {
-	{0, 532*KHZ_T},
-	{1, 266*KHZ_T},
-	{2, 133*KHZ_T},
+	{0, 667*KHZ_T},
+	{1, 333*KHZ_T},
+	{2, 166*KHZ_T},
 #ifdef USE_DVFS_AL1_LEVEL
-	{3, 133*KHZ_T},
-	{4, 66*KHZ_T},
+	{3, 166*KHZ_T},
+	{4, 83*KHZ_T},
 	{5, CPUFREQ_TABLE_END},		
 #else
-	{3, 66*KHZ_T},
+	{3, 83*KHZ_T},
 	{4, CPUFREQ_TABLE_END},		
 #endif /* USE_DVFS_AL1_LEVEL */
 };
 
 static struct cpufreq_frequency_table freq_table_800MHz[] = {
-	{0, 800*KHZ_T},
-	{1, 400*KHZ_T},
-	{2, 266*KHZ_T},	
-	{3, 133*KHZ_T},
+	{0, 1066*KHZ_T},
+	{1, 660*KHZ_T},
+	{2, 355*KHZ_T},	
+	{3, 177*KHZ_T},
 #ifdef USE_DVFS_AL1_LEVEL
-	{4, 133*KHZ_T},
-	{5, (66)*KHZ_T},
+	{4, 177*KHZ_T},
+	{5, (88)*KHZ_T},
 	{6, CPUFREQ_TABLE_END},
 #else
-	{4, (66)*KHZ_T},
+	{4, (88)*KHZ_T},
 	{5, CPUFREQ_TABLE_END},
 #endif /* USE_DVFS_AL1_LEVEL */
 };
@@ -127,30 +127,29 @@ static unsigned char transition_state_532MHz[][2] = {
 /* frequency voltage matching table */
 static const unsigned int frequency_match_532MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-	{532000, 1100, 1250, 0},
-	{266000, 1100, 1250, 1},
-	{133000, 1000, 1250, 2},
+	{667000, 1100, 1250, 0},
+	{333000, 1100, 1250, 1},
+	{166000, 1000, 1250, 2},
 #ifdef USE_DVFS_AL1_LEVEL
-	{133000, 1050, 1050, 3},
-	{66000, 1050, 1050, 4},
+	{166000, 1050, 1050, 3},
+	{83000, 1050, 1050, 4},
 #else
-	{66000, 1050, 1050, 3},
+	{83000, 1050, 1050, 3},
 #endif /* USE_DVFS_AL1_LEVEL */
 };
-
 
 /* frequency voltage matching table */
 static unsigned int frequency_match_800MHz[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-	{800000, DEF_800, 1250, 0},
-	{400000, DEF_400, 1250, 1},
-	{266000, DEF_266, 1250, 2},
-	{133000, DEF_133, 1250, 3},
+	{1066000, DEF_800, 1250, 0},
+	{660000, DEF_400, 1250, 1},
+	{355000, DEF_266, 1250, 2},
+	{177000, DEF_133, 1250, 3},
 #ifdef USE_DVFS_AL1_LEVEL
-	{133000, DEF_133, 1050, 4},
-	{66000, DEF_66, 1050, 5},
+	{177000, DEF_133, 1050, 4},
+	{88000, DEF_66, 1050, 5},
 #else
-	{66000, 1050, 1050, 4},
+	{88000, 1050, 1050, 4},
 #endif /* USE_DVFS_AL1_LEVEL */
 };
 
