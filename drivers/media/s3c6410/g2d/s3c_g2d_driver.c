@@ -1,16 +1,23 @@
 /*
- * Copyright  2008 Samsung Electronics Co, Ltd. All Rights Reserved. 
+/* g2d/s3c_g2d_driver.c
  *
- * This software is the confidential and proprietary information
- * of Samsung Electronics  ("Confidential Information").   
- * you shall not disclose such Confidential Information and shall use
- * it only in accordance with the terms of the license agreement
- * you entered into with Samsung Electronics 
+ * Copyright (c) 2008 Samsung Electronics
  *
- * This file implements s3c-g2d driver.
+ * Samsung S3C G2D driver
  *
- * @name G2D DRIVER MODULE Module (s3c_g2d_driver.c)
- * @date 2008-12-05
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #include <linux/init.h>
 
@@ -106,9 +113,6 @@ int s3c_g2d_check_fifo(int empty_fifo)
 {
 	int count = 0;
 
-//	while((__raw_readl(s3c_g2d_base + S3C_G2D_FIFO_STAT_REG)&0x3f) > (FIFO_NUM - empty_fifo) );
-//	while((((__raw_readl(s3c_g2d_base + S3C_G2D_FIFO_STAT_REG)&0x7e) >> 1)) > (FIFO_NUM - empty_fifo) );
-
 	while((((__raw_readl(s3c_g2d_base + S3C_G2D_FIFO_STAT_REG)&0x7e) >> 1)) > (FIFO_NUM - empty_fifo) && count < G2D_CHECK_FIFO_COUNT)
 		count++;
 	if (count == G2D_CHECK_FIFO_COUNT)
@@ -193,7 +197,7 @@ static int s3c_g2d_init_regs(s3c_g2d_params *params)
 			break;
 		}
 		alpha_reg |= S3C_G2D_ROP_REG_ABM_REGISTER |  G2D_ROP_SRC_ONLY;
-		//__raw_writel(S3C_G2D_ROP_REG_OS_FG_COLOR | S3C_G2D_ROP_REG_ABM_REGISTER |  S3C_G2D_ROP_REG_T_OPAQUE_MODE | G2D_ROP_SRC_ONLY, s3c_g2d_base + S3C_G2D_ROP_REG);
+
 		if(params->alpha_val > ALPHA_VALUE_MAX){
 			printk(KERN_ALERT"s3c g2d dirver error: exceed alpha value range 0~255\n");
                	 return -ENOENT;
@@ -653,6 +657,12 @@ static int s3c_g2d_ioctl(struct inode *inode, struct file *file, unsigned int cm
 
 	params	= (s3c_g2d_params*)file->private_data;
 	if (copy_from_user(params, (s3c_g2d_params*)arg, sizeof(s3c_g2d_params)))
+        {
+		return -EFAULT;
+	}
+        
+          if((params->src_work_width <= 0) || (params->src_work_height <= 0)|| 
+	  (params->dst_work_width <= 0) || (params->dst_work_height <= 0))
 	{
 		return -EFAULT;
 	}

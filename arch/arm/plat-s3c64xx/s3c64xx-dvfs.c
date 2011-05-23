@@ -34,7 +34,7 @@ static char procfs_buffer[PROCFS_SIZE]="0\0\0";
  *
  */
 static unsigned long procfs_buffer_size=1;
-static unsigned int undervolt=0;
+static unsigned int undervolt=100;
 #define DEF_800 1350
 #define DEF_400 1150
 #define DEF_266 1100
@@ -69,34 +69,63 @@ int uv_procfile_read(char *buffer,
 	return ret;
 }
 
-
+/*
 static struct cpufreq_frequency_table freq_table_532MHz[] = {
-	{0, 667*KHZ_T},
-	{1, 333*KHZ_T},
-	{2, 166*KHZ_T},
+    {0, 667*KHZ_T},
+    {1, 333*KHZ_T},
+    {2, 166*KHZ_T},
 #ifdef USE_DVFS_AL1_LEVEL
-	{3, 166*KHZ_T},
-	{4, 83*KHZ_T},
-	{5, CPUFREQ_TABLE_END},		
+    {3, 166*KHZ_T},
+    {4, 83*KHZ_T},
+    {5, CPUFREQ_TABLE_END},
 #else
-	{3, 83*KHZ_T},
-	{4, CPUFREQ_TABLE_END},		
-#endif /* USE_DVFS_AL1_LEVEL */
+    {3, 83*KHZ_T},
+    {4, CPUFREQ_TABLE_END},
+#endif
 };
 
 static struct cpufreq_frequency_table freq_table_800MHz[] = {
-	{0, 1066*KHZ_T},
-	{1, 660*KHZ_T},
-	{2, 355*KHZ_T},	
-	{3, 177*KHZ_T},
+    {0, 1066*KHZ_T},
+    {1, 660*KHZ_T},
+    {2, 355*KHZ_T},
+    {3, 177*KHZ_T},
 #ifdef USE_DVFS_AL1_LEVEL
-	{4, 177*KHZ_T},
-	{5, (88)*KHZ_T},
-	{6, CPUFREQ_TABLE_END},
+    {4, 177*KHZ_T},
+    {5, (88)*KHZ_T},
+    {6, CPUFREQ_TABLE_END},
 #else
-	{4, (88)*KHZ_T},
-	{5, CPUFREQ_TABLE_END},
-#endif /* USE_DVFS_AL1_LEVEL */
+    {4, (88)*KHZ_T},
+    {5, CPUFREQ_TABLE_END},
+#endif
+};
+*/
+static struct cpufreq_frequency_table freq_table_532MHz[] = {
+    {0, 532*KHZ_T},
+    {1, 266*KHZ_T},
+    {2, 133*KHZ_T},
+#ifdef USE_DVFS_AL1_LEVEL
+    {3, 133*KHZ_T},
+    {4, 66*KHZ_T},
+    {5, CPUFREQ_TABLE_END},
+#else
+    {3, 66*KHZ_T},
+    {4, CPUFREQ_TABLE_END},
+#endif
+};
+
+static struct cpufreq_frequency_table freq_table_800MHz[] = {
+    {0, 800*KHZ_T},
+    {1, 400*KHZ_T},
+    {2, 266*KHZ_T},
+    {3, 133*KHZ_T},
+#ifdef USE_DVFS_AL1_LEVEL
+    {4, 133*KHZ_T},
+    {5, (66)*KHZ_T},
+    {6, CPUFREQ_TABLE_END},
+#else
+    {4, (66)*KHZ_T},
+    {5, CPUFREQ_TABLE_END},
+#endif
 };
 
 static unsigned char transition_state_800MHz[][2] = {
@@ -124,34 +153,58 @@ static unsigned char transition_state_532MHz[][2] = {
 #endif /* USE_DVFS_AL1_LEVEL */
 };
 
-/* frequency voltage matching table */
 static const unsigned int frequency_match_532MHz[][4] = {
-/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-	{667000, 1100, 1250, 0},
-	{333000, 1100, 1250, 1},
-	{166000, 1000, 1250, 2},
+    {667000, 1100, 1250, 0},
+    {333000, 1100, 1250, 1},
+    {166000, 1000, 1250, 2},
 #ifdef USE_DVFS_AL1_LEVEL
-	{166000, 1050, 1050, 3},
-	{83000, 1050, 1050, 4},
+    {166000, 1050, 1050, 3},
+    {83000, 1050, 1050, 4},
 #else
-	{83000, 1050, 1050, 3},
-#endif /* USE_DVFS_AL1_LEVEL */
+    {83000, 1050, 1050, 3},
+#endif
 };
 
-/* frequency voltage matching table */
 static unsigned int frequency_match_800MHz[][4] = {
-/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-	{1066000, DEF_800, 1250, 0},
-	{660000, DEF_400, 1250, 1},
-	{355000, DEF_266, 1250, 2},
-	{177000, DEF_133, 1250, 3},
+    {1066000, DEF_800, 1250, 0},
+    {660000, DEF_400, 1250, 1},
+    {355000, DEF_266, 1250, 2},
+    {177000, DEF_133, 1250, 3},
 #ifdef USE_DVFS_AL1_LEVEL
-	{177000, DEF_133, 1050, 4},
-	{88000, DEF_66, 1050, 5},
+    {177000, DEF_133, 1050, 4},
+    {88000, DEF_66, 1050, 5},
 #else
-	{88000, 1050, 1050, 4},
-#endif /* USE_DVFS_AL1_LEVEL */
+    {88000, 1050, 1050, 4},
+#endif
 };
+
+
+/*
+static const unsigned int frequency_match_532MHz[][4] = {
+    {532000, 1100, 1250, 0},
+    {266000, 1100, 1250, 1},
+    {133000, 1000, 1250, 2},
+#ifdef USE_DVFS_AL1_LEVEL
+    {133000, 1050, 1050, 3},
+    {66000, 1050, 1050, 4},
+#else
+    {66000, 1050, 1050, 3},
+#endif 
+};
+
+static unsigned int frequency_match_800MHz[][4] = {
+    {800000, DEF_800, 1250, 0},
+    {400000, DEF_400, 1250, 1},
+    {266000, DEF_266, 1250, 2},
+    {133000, DEF_133, 1250, 3},
+#ifdef USE_DVFS_AL1_LEVEL
+    {133000, DEF_133, 1050, 4},
+    {66000, DEF_66, 1050, 5},
+#else
+    {66000, 1050, 1050, 4},
+#endif
+};
+*/
 
 int uv_procfile_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
@@ -548,6 +601,11 @@ static int __init s3c6410_cpu_init(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_cpuinfo(policy, s3c6410_freq_table[S3C64XX_FREQ_TAB]);
 }
 
+static struct freq_attr *s3c64xx_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver s3c6410_driver = {
 	.flags		= CPUFREQ_STICKY,
 	.verify		= s3c6410_verify_speed,
@@ -555,6 +613,7 @@ static struct cpufreq_driver s3c6410_driver = {
 	.get		= s3c6410_getspeed,
 	.init		= s3c6410_cpu_init,
 	.name		= "s3c6410",
+	.attr    	= s3c64xx_cpufreq_attr,
 };
 
 static int __init s3c6410_cpufreq_init(void)

@@ -92,7 +92,7 @@ static const struct snd_pcm_hardware s3c24xx_pcm_hardware = {
 	.channels_max		= 2,
 	.buffer_bytes_max	= 1024*1024,
 	.period_bytes_min	= 32,
-	.period_bytes_max	= 128*1024,
+	.period_bytes_max	= 256*1024,
 	.periods_min		= 2,
 	.periods_max		= 256,
 	.fifo_size		= 64,
@@ -249,7 +249,6 @@ static void s3c24xx_pcm_enqueue(struct snd_pcm_substream *substream)
 
 	if ((pos + len) > prtd->dma_end) {
 		len  = prtd->dma_end - pos;
-		s3cdbg(KERN_DEBUG "%s: corrected dma len %ld\n", __FUNCTION__, len);
 	}
  
 	/* DMA with I2S might be unstable when length is too short. */
@@ -428,8 +427,6 @@ if (USE_LLI) {
 
 	prtd->lli_data = dma_alloc_coherent(substream->pcm->card->dev, sizeof(struct dmac_lli) * prtd->num_lli, 
 									 	&dma_data->lli_addr, GFP_KERNEL | GFP_DMA);
-	if(!prtd->lli_data)
-		printk("Failed to allocate memory for using dmac lli interface\n");
 
 	dma_data->dma_lli_v = (void *)prtd->lli_data;
 	prtd->lli_data = s3c6410_audio_make_dmalli(substream, dma_data, prtd->num_lli);
@@ -614,8 +611,6 @@ if (USE_LLI) {
 
 	if (prtd)
 		kfree(prtd);
-	else
-		printk("s3c24xx_pcm_close called with prtd == NULL\n");
 
 	return 0;
 }
@@ -734,8 +729,6 @@ static int __init s3c_soc_platform_init(void)
 	
 	if (LLI_Proc_File == NULL) {
 		xm_remove(PROCFS_NAME);
-		printk(KERN_ALERT "Error: Could not initialize /proc/xmister/%s\n",
-			PROCFS_NAME);
 	}
 	else {
 		LLI_Proc_File->read_proc  = lli_procfile_read;
@@ -745,16 +738,12 @@ static int __init s3c_soc_platform_init(void)
 		LLI_Proc_File->uid 	  = 0;
 		LLI_Proc_File->gid 	  = 0;
 		LLI_Proc_File->size 	  = 37;
-
-		printk(KERN_INFO "/proc/xmister/%s created\n", PROCFS_NAME);
 	}
 
 	BUF_Proc_File = xm_add(BUF_PROCFS_NAME);
 	
 	if (BUF_Proc_File == NULL) {
 		xm_remove(BUF_PROCFS_NAME);
-		printk(KERN_ALERT "Error: Could not initialize /proc/xmister/%s\n",
-			BUF_PROCFS_NAME);
 	}
 	else {
 		BUF_Proc_File->read_proc  = buf_procfile_read;
@@ -765,10 +754,8 @@ static int __init s3c_soc_platform_init(void)
 		BUF_Proc_File->gid 	  = 0;
 		BUF_Proc_File->size 	  = 37;
 
-		sprintf(procfs_buffer,"%d",ANDROID_BUF_NUM);
 		procfs_buffer_size=strlen(procfs_buffer);
 
-		printk(KERN_INFO "/proc/xmister/%s created\n", BUF_PROCFS_NAME);
 	}
 
     return snd_soc_register_platform(&s3c24xx_soc_platform);
@@ -780,9 +767,7 @@ static void __exit s3c_soc_platform_exit(void)
 {
     snd_soc_unregister_platform(&s3c24xx_soc_platform);
     xm_remove(PROCFS_NAME);
-    printk(KERN_INFO "/proc/xmister/%s removed\n", PROCFS_NAME);
     xm_remove(BUF_PROCFS_NAME);
-    printk(KERN_INFO "/proc/xmister/%s removed\n", BUF_PROCFS_NAME);
 }
 
 module_exit(s3c_soc_platform_exit);

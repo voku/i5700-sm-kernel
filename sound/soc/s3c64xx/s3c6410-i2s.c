@@ -30,13 +30,6 @@
 #include "s3c-pcm.h"
 #include "s3c6410-i2s.h"
 
-//#define CONFIG_SND_DEBUG
-#ifdef CONFIG_SND_DEBUG
-#define debug_msg(x...) printk(x)
-#else
-#define debug_msg(x...)
-#endif
-
 #ifdef CONFIG_S3C_DMA_PL080	
 static struct s3c2410_dma_client s3c_dma_client_out = {
 	.name = "I2S PCM Stereo out"
@@ -87,9 +80,6 @@ static void dump_i2s(void)
 static void s3c_snd_txctrl(int on)
 {
 	u32 iiscon;
-
-	debug_msg("%s\n", __FUNCTION__);
-
 	iiscon  = readl(s3c_i2s.regs + S3C_IISCON);
 
 	if (on) {
@@ -104,7 +94,6 @@ static void s3c_snd_txctrl(int on)
 		if ( (iiscon & S3C_IISCON_RXDMACTIVE) != S3C_IISCON_RXDMACTIVE)
 			{
 		iiscon &= ~S3C_IISCON_I2SACTIVE;
-			debug_msg("I2S off\n");
 			}
 		iiscon  |= S3C_IISCON_TXCHPAUSE;
 		iiscon  |= S3C_IISCON_TXDMAPAUSE;
@@ -116,9 +105,6 @@ static void s3c_snd_txctrl(int on)
 static void s3c_snd_rxctrl(int on)
 {
 	u32 iiscon;
-
-	debug_msg("%s\n", __FUNCTION__);
-
 	iiscon  = readl(s3c_i2s.regs + S3C_IISCON);
 
 	if(on){
@@ -133,7 +119,6 @@ static void s3c_snd_rxctrl(int on)
 		if ( (iiscon & S3C_IISCON_TXDMACTIVE)  != S3C_IISCON_TXDMACTIVE)
 			{
 			iiscon &= ~S3C_IISCON_I2SACTIVE;
-			debug_msg("I2S off\n");
 			}
 		
 		iiscon  |= S3C_IISCON_RXCHPAUSE;
@@ -152,8 +137,6 @@ static int s3c_snd_lrsync(void)
 {
 	u32 iiscon;
 	int timeout = 50; /* 5ms */
-
-	debug_msg("%s\n", __FUNCTION__);
 
 	while (1) {
 		iiscon = readl(s3c_i2s.regs + S3C_IISCON);
@@ -175,9 +158,6 @@ static int s3c_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
 		unsigned int fmt)
 {
 	u32 iismod;
-
-	debug_msg("%s\n", __FUNCTION__);
-
 	iismod = readl(s3c_i2s.regs + S3C_IISMOD);
 	iismod &= ~S3C_IISMOD_SDFMASK;
 
@@ -234,8 +214,6 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	u32 iismod;
 	
-	debug_msg("%s\n", __FUNCTION__);
-
 #ifdef CONFIG_S3C_DMA_PL080_SOL
 	rtd->dai->cpu_dai->dma_data = s3c_i2s_dai.dma_data;
 #endif
@@ -286,18 +264,6 @@ static int s3c_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	writel(iismod, s3c_i2s.regs + S3C_IISMOD);
 
-
-	debug_msg("s3c iis mode: 0x%08x\n", readl(s3c6410_i2s.regs + S3C64XX_IIS0MOD));
-	debug_msg("s3c: params_channels %d\n", params_channels(params));
-	debug_msg("s3c: params_format %d\n", params_format(params));
-	debug_msg("s3c: params_subformat %d\n", params_subformat(params));
-	debug_msg("s3c: params_period_size %d\n", params_period_size(params));
-	debug_msg("s3c: params_period_bytes %d\n", params_period_bytes(params));
-	debug_msg("s3c: params_periods %d\n", params_periods(params));
-	debug_msg("s3c: params_buffer_size %d\n", params_buffer_size(params));
-	debug_msg("s3c: params_buffer_bytes %d\n", params_buffer_bytes(params));
-	debug_msg("hw_params: IISMOD: %x\n", iismod);
-
 	return 0;
 }
 
@@ -306,9 +272,6 @@ static int s3c_i2s_startup(struct snd_pcm_substream *substream,
 {
 	u32 iiscon, iisfic;
 	int timeout;
-
-	debug_msg("%s\n", __FUNCTION__);
-
 
 	/*Empty Tx FIFO*/
 	timeout = 50;
@@ -355,9 +318,6 @@ static int s3c_i2s_prepare(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
 	u32 iismod;
-	
-	debug_msg("%s\n", __FUNCTION__);
-
 	iismod = readl(s3c_i2s.regs + S3C_IISMOD);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
@@ -384,8 +344,6 @@ static int s3c_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 {
 	int ret = 0;
 
-	debug_msg("%s, stream:%d \n", __FUNCTION__, substream->stream);
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -396,7 +354,6 @@ static int s3c_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 				goto exit_err;
 		}
 
-		debug_msg("Start\n");
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 			s3c_snd_rxctrl(1);
 		else
@@ -405,7 +362,6 @@ static int s3c_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		debug_msg("Stop\n");
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 			s3c_snd_rxctrl(0);
 		else
@@ -432,8 +388,6 @@ static int s3c_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 	struct clk *clk;
 #endif
 	u32 iismod = readl(s3c_i2s.regs + S3C_IISMOD);
-
-	debug_msg("%s\n", __FUNCTION__);
 
 	switch (clk_id) {
 	case S3C_CLKSRC_PCLK:
@@ -571,8 +525,6 @@ static int s3c_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 {
 	u32 reg;
 
-	debug_msg("%s\n", __FUNCTION__);
-
 	switch (div_id) {
 	case S3C_DIV_MCLK:
 		reg = readl(s3c_i2s.regs + S3C_IISMOD) & ~S3C_IISMOD_RFSMASK;
@@ -616,8 +568,6 @@ static int s3c_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
  */
 u32 s3c_i2s_get_clockrate(void)
 {
-	debug_msg("%s\n", __FUNCTION__);
-
 	return s3c_i2s.clk_rate;
 }
 EXPORT_SYMBOL_GPL(s3c_i2s_get_clockrate);
@@ -625,9 +575,6 @@ EXPORT_SYMBOL_GPL(s3c_i2s_get_clockrate);
 static irqreturn_t s3c_iis_irq(int irqno, void *dev_id)
 {
 	u32 iiscon;
-	
-	debug_msg("%s\n", __FUNCTION__);
-
 	iiscon  = readl(s3c_i2s.regs + S3C_IISCON);
 	if(S3C_IISCON_FTXURSTATUS & iiscon) {
 		iiscon &= ~S3C_IISCON_FTXURINTEN;
@@ -646,8 +593,6 @@ static int s3c_i2s_probe(struct platform_device *pdev,
 #if USE_CLKAUDIO
 	struct clk *cm, *cf;
 #endif
-
-	debug_msg("%s\n", __FUNCTION__);
 
 	s3c_i2s.regs = ioremap(S3C_IIS_PABASE, 0x100);
 
@@ -747,31 +692,24 @@ lb5:
 #ifdef CONFIG_PM
 static int s3c_i2s_suspend(struct snd_soc_dai *cpu_dai)
 {
-	debug_msg("%s\n", __FUNCTION__);
-
 	s3c_i2s.iiscon = readl(s3c_i2s.regs + S3C_IISCON);
 	s3c_i2s.iismod = readl(s3c_i2s.regs + S3C_IISMOD);
 	s3c_i2s.iisfic = readl(s3c_i2s.regs + S3C_IISFIC);
 	s3c_i2s.iispsr = readl(s3c_i2s.regs + S3C_IISPSR);
 
 	clk_disable(s3c_i2s.iis_clk);
-	debug_msg("%s-done\n", __FUNCTION__);
 
 	return 0;
 }
 
 static int s3c_i2s_resume(struct snd_soc_dai *cpu_dai)
 {
-	debug_msg("%s\n", __FUNCTION__);
-
 	clk_enable(s3c_i2s.iis_clk);
 
 	writel(s3c_i2s.iiscon, s3c_i2s.regs + S3C_IISCON);
 	writel(s3c_i2s.iismod, s3c_i2s.regs + S3C_IISMOD);
 	writel(s3c_i2s.iisfic, s3c_i2s.regs + S3C_IISFIC);
 	writel(s3c_i2s.iispsr, s3c_i2s.regs + S3C_IISPSR);
-
-	debug_msg("%s-done\n", __FUNCTION__);
 
 	return 0;
 }

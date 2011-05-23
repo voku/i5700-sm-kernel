@@ -56,13 +56,6 @@
 #define FO \
 	printk ("[ "SUBJECT " (%s,%d) ] " "%s - OUT" "\n", __func__, __LINE__, __func__);
 
-//#define CONFIG_SND_DEBUG
-
-#ifdef CONFIG_SND_DEBUG
-#define s3cdbg(x...) P(x)
-#else
-#define s3cdbg(x...)
-#endif
 static int android_hifi_hw_params(struct snd_pcm_substream *, struct snd_pcm_hw_params *);
 static int android_hifi_hw_free(struct snd_pcm_substream *);
 
@@ -120,12 +113,6 @@ static int android_hifi_hw_params(struct snd_pcm_substream *substream,
 	if (regs == NULL)
 		return -ENXIO;
 
-	s3cdbg("Entered %s, rate = %d\n", __FUNCTION__, params_rate(params));
-	s3cdbg("before :   IISMOD: %lx,IISPSR: %lx\n",
-			 readl((regs + S3C64XX_IIS0MOD)), 
-			readl((regs + S3C64XX_IIS0PSR)));
-	s3cdbg("	GPDCON = 0x%x \n",readl(S3C64XX_GPDCON));
-	
 	/*PCLK & SCLK gating enable*/
 	writel(readl(S3C_PCLK_GATE)|S3C_CLKCON_PCLK_IIS0, S3C_PCLK_GATE);
 	writel(readl(S3C_SCLK_GATE)|S3C_CLKCON_SCLK_AUDIO0, S3C_SCLK_GATE);
@@ -136,7 +123,6 @@ static int android_hifi_hw_params(struct snd_pcm_substream *substream,
 
 	/*Clear I2S prescaler value [13:8] and disable prescaler*/
 	iispsr = readl((regs + S3C64XX_IIS0PSR));	
-	//printk("iispsr = 0x%lx\n",iispsr);
 	iispsr &=~((0x3f<<8)|(1<<15)); 
 	writel(iispsr, (regs + S3C64XX_IIS0PSR));
 
@@ -181,14 +167,9 @@ static int android_hifi_hw_params(struct snd_pcm_substream *substream,
 	}
 	writel(k, S3C_EPLL_CON1);
 	writel((1<<31)|(m<<16)|(p<<8)|(s<<0) ,S3C_EPLL_CON0);
-	s3cdbg("m = %d, EPLL_CON0 : 0x%x, epll_con0:0x%x\n",m,readl(S3C_EPLL_CON0),epll_con0);
 	
 	while(!(__raw_readl(S3C_EPLL_CON0)&(1<<30)));
 
-	s3cdbg(" !!!! EPLL set - m:%d, p:%d, s:%d, k:%d  => EPLL_CON0 : 0x%x, EPLL_CON1: 0x%x !!!!\n",\
-		m,p,s,k,readl(S3C_EPLL_CON0),readl(S3C_EPLL_CON1) );
-
-	
 	/* MUXepll : FOUTepll */
 	writel(readl(S3C_CLK_SRC)|S3C_CLKSRC_EPLL_CLKSEL, S3C_CLK_SRC);
 	/* AUDIO0 sel : FOUTepll */
@@ -293,12 +274,6 @@ static int android_hifi_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
-	s3cdbg("after :  IISCON: %x IISMOD: %x,IISFIC: %x,IISPSR: %x\n",
-			 readl(regs + S3C64XX_IIS0CON), readl(regs + S3C64XX_IIS0MOD), 
-			readl(regs + S3C64XX_IIS0FIC), readl(regs + S3C64XX_IIS0PSR));
-	s3cdbg("	: EPLL_CON0: 0x%x EPLLCON1:0x%x CLK_SRC:0x%x CLK_DIV2:0x%x\n",\
-		readl(S3C_EPLL_CON0),readl(S3C_EPLL_CON1),readl(S3C_CLK_SRC), readl(S3C_CLK_DIV2));
-
 	return 0;
 }
 
@@ -317,28 +292,19 @@ static int __init android_init(void)
 {
 	int ret;
 	
-	s3cdbg("[android_ak4671] android_init ++\n");
-
 	android_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!android_snd_device)
 	{	
-		printk("[android_ak4671] soc-audio create fail \n");
 		return -ENOMEM;
 	}
 
-    	s3cdbg("[android_ak4671] platform_set_drvdata\n");
 	platform_set_drvdata(android_snd_device, &android_snd_devdata);
 	android_snd_devdata.dev = &android_snd_device->dev;
-	
-	s3cdbg("[android_ak4671] platform_device_add\n");
 	ret = platform_device_add(android_snd_device);
 
 	if (ret)
 		platform_device_put(android_snd_device);
-	else
-		printk("[android_ak4671] android_snd_device add fail \n");
 	
-	s3cdbg("[android_ak4671] android_init --\n");
 	return ret;
 }
 

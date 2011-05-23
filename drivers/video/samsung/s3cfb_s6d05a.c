@@ -84,7 +84,7 @@ EXPORT_SYMBOL(backlight_level_ctrl);
 #define S3C_FB_HRES_OSD_VIRTUAL S3C_FB_HRES_OSD     /* Horizon pixel Resolition */
 #define S3C_FB_VRES_OSD_VIRTUAL (S3C_FB_VRES_OSD * 2) 	/* Vertial pixel Resolution */
 
-#define S3C_FB_VFRAME_FREQ      60      /* Frame Rate Frequency */
+#define S3C_FB_VFRAME_FREQ      70      /* Frame Rate Frequency */
 
 #define S3C_FB_PIXEL_CLOCK      (S3C_FB_VFRAME_FREQ * \
                                 (S3C_FB_HFP + S3C_FB_HSW + S3C_FB_HBP + S3C_FB_HRES) * \

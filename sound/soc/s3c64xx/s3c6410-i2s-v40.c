@@ -53,12 +53,6 @@
 #include "s3c-pcm.h"
 #include "s3c-i2s.h"
 
-#ifdef CONFIG_SND_DEBUG
-#define s3cdbg(x...) printk(x)
-#else
-#define s3cdbg(x...)
-#endif
-
 /* used to disable sysclk if external crystal is used */
 static int extclk = 0;
 module_param(extclk, int, 0);

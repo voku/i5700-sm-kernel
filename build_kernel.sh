@@ -117,7 +117,7 @@ build_kernel()
 	cp $KERNEL_DIR/net/netfilter/xt_TCPMSS.ko            $KERNEL_DIR/../initramfs/lib/modules
 	cp $KERNEL_DIR/drivers/net/tun.ko                    $KERNEL_DIR/../initramfs/lib/modules
 
-	$CTNG_BIN_DIR/*-strip -g $KERNEL_DIR/../initramfs/lib/modules/*
+	$CTNG_BIN_DIR/arm-linux-gnueabi-strip -g $KERNEL_DIR/../initramfs/lib/modules/*
  
 	make
 }
