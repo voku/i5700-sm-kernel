@@ -34,7 +34,7 @@ static char procfs_buffer[PROCFS_SIZE]="0\0\0";
  *
  */
 static unsigned long procfs_buffer_size=1;
-static unsigned int undervolt=100;
+static unsigned int undervolt=0;
 #define DEF_800 1350
 #define DEF_400 1150
 #define DEF_266 1100

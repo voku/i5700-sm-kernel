@@ -230,8 +230,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer
-HOSTCXXFLAGS = -O2
+HOSTCFLAGS   = -Wall -Wstrict-prototypes -O3 -fomit-frame-pointer
+HOSTCXXFLAGS = -O3
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -331,11 +331,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS	= -DMODULE -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s -march=armv6zk -mfloat-abi=softfp -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations
+MODFLAGS	= -DMODULE -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s -march=armv6zk -mfloat-abi=softfp -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -funroll-loops
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp
+CFLAGS_KERNEL	= -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
 AFLAGS_KERNEL	=
 
 
