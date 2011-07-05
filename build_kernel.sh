@@ -20,7 +20,7 @@ PRODUCT=r880
 case "$PRODUCT" in
 
     r880)		
-                MODULES="g2d g3d mfc vibetonz bcm4325 btgpio camera cmm dpram jpeg mfc2 multipdp okmfc param pp rfs rotator staryuwlan wl wlan xsr vibetonz"
+                MODULES="g2d g3d mfc vibetonz bcm4325 btgpio camera cmm dpram jpeg mfc2 multipdp okmfc param pp rfs rotator staryuwlan wl wlan xsr vibetonz compcache"
                 KERNEL_DEF_CONFIG=spica_android_defconfig
                 ;;
     
@@ -61,11 +61,47 @@ build_modules()
 	echo "*************************************"
 	echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O3 \
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funroll-loops \
+                -ffast-math \
+                -funsafe-loop-optimizations \
+                -fno-tree-vectorize \
+                -fno-gcse \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funroll-loops \
+                -ffast-math \
+                -funsafe-loop-optimizations \
+                -fno-tree-vectorize \
+                -fno-gcse \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
@@ -74,7 +110,25 @@ build_modules()
 	do
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
-		make KDIR=$KERNEL_DIR
+		make KDIR=$KERNEL_DIR CFLAGS="-O3 \
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funroll-loops \
+                -ffast-math \
+                -funsafe-loop-optimizations \
+                -fno-tree-vectorize \
+                -fno-gcse \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 		if [ -e ./*.ko ]
 		then
 		    cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules

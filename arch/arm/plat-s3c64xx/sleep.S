@@ -34,7 +34,7 @@
 	 * entry:
 	 *	r0 = pointer to the save block
 	 * exit:
-	 *	r0 = exit code: 1 => stored data
+	 *	r0 = exit code: 0 => stored data
 	 *			0 => resumed from sleep
 	*/
 
@@ -77,7 +77,7 @@ s3c6410_sleep_save_phys:
 
 	.word	0x2bedf00d
 
-	/* s3c_cpu_reusme
+	/* s3c_cpu_resume
 	 *
 	 * This is the entry point, stored by whatever method the bootloader
 	 * requires to get the kernel runnign again. This code expects to be

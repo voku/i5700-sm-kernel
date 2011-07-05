@@ -88,14 +88,14 @@ static const struct snd_pcm_hardware s3c24xx_pcm_hardware = {
 				    SNDRV_PCM_FMTBIT_U8 |
 				    SNDRV_PCM_FMTBIT_S24_LE |
 				    SNDRV_PCM_FMTBIT_S8,
-	.channels_min		= 2,
-	.channels_max		= 2,
-	.buffer_bytes_max	= 1024*1024,
-	.period_bytes_min	= 32,
-	.period_bytes_max	= 256*1024,
-	.periods_min		= 2,
-	.periods_max		= 256,
-	.fifo_size		= 64,
+    .channels_min       = 2,
+    .channels_max       = 2,
+    .buffer_bytes_max   = 256*1024,
+    .period_bytes_min   = 32,
+    .period_bytes_max   = 128*1024,
+    .periods_min        = 2,
+    .periods_max        = 128,
+    .fifo_size      	= 32,
 };
 
 struct s3c24xx_runtime_data {

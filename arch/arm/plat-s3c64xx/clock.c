@@ -51,38 +51,18 @@ extern int  s3c6410_changedivider(unsigned int value, unsigned int vaddr);
 
 #define INIT_XTAL			12 * MHZ
 
-/*
-static const u32 s3c_cpu_clk_tab_533MHz[][6] = {
-    {667*MHZ, 333 *MHZ, 333, 3, 0, 1},
-    {333*MHZ, 333 *MHZ, 333, 3, 1, 1},
-    {166*MHZ, 333 *MHZ, 333, 3, 3, 1},
-#ifdef USE_DVFS_AL1_LEVEL
-    {166*MHZ, 166 *MHZ, 333, 1, 3, 3},
-#endif 
-    { 83*MHZ, 166 *MHZ, 333, 1, 7, 3},
-};
-
-static const u32 s3c_cpu_clk_tab_800MHz[][6] = {
-    {1066*MHZ,  355 *MHZ, 533, 3, 0, 2},
-    {660*MHZ,  355 *MHZ, 533, 3, 1, 2},
-    {355*MHZ,  355 *MHZ, 533, 3, 2, 2},
-    {177*MHZ,  355 *MHZ, 533, 3, 5, 2},
-#ifdef USE_DVFS_AL1_LEVEL
-    {177*MHZ,  177 *MHZ, 533, 1, 5, 5},
-#endif 
-    { 88*MHZ,  177 *MHZ, 533, 1, 11, 5},
-};
-*/
+/* ARMCLK, HCLKX2, APLL, PDIV, ARM_DIV, HCLKX2_DIV */
 static const u32 s3c_cpu_clk_tab_533MHz[][6] = {
 	{532*MHZ, 266 *MHZ, 266, 3, 0, 1},
 	{266*MHZ, 266 *MHZ, 266, 3, 1, 1},
 	{133*MHZ, 266 *MHZ, 266, 3, 3, 1},
 #ifdef USE_DVFS_AL1_LEVEL
 	{133*MHZ, 133 *MHZ, 266, 1, 3, 3},
-#endif 
+#endif /* USE_DVFS_AL1_LEVEL */
 	{ 66*MHZ, 133 *MHZ, 266, 1, 7, 3},
 };
 
+/* ARMCLK, HCLKX2, APLL, PDIV, ARM_DIV, HCLKX2_DIV */
 static const u32 s3c_cpu_clk_tab_800MHz[][6] = {
 	{800*MHZ,  266 *MHZ, 400, 3, 0, 2},
 	{400*MHZ,  266 *MHZ, 400, 3, 1, 2},
@@ -90,11 +70,11 @@ static const u32 s3c_cpu_clk_tab_800MHz[][6] = {
 	{133*MHZ,  266 *MHZ, 400, 3, 5, 2},
 #ifdef USE_DVFS_AL1_LEVEL
 	{133*MHZ,  133 *MHZ, 400, 1, 5, 5},
-#endif 
+#endif /* USE_DVFS_AL1_LEVEL */
 	{ 66*MHZ,  133 *MHZ, 400, 1, 11, 5},
 };
 
-unsigned int S3C64XX_FREQ_TAB = 0;
+unsigned int S3C64XX_FREQ_TAB = 1;
 
 static const u32 (*s3c_cpu_clk_tab[2])[6] = {
 	s3c_cpu_clk_tab_533MHz,
@@ -231,6 +211,7 @@ int s3c64xx_clk_set_rate(unsigned int target_freq,
 
 	/* validate target frequency */ 
 	if(cpu_clk_tab[index][0] != target_freq) {
+printk("cpufreq %d != %d! TAB=%d\n",cpu_clk_tab[index][0], target_freq,S3C64XX_FREQ_TAB);
 		return 0;
 	}
 
@@ -242,6 +223,7 @@ int s3c64xx_clk_set_rate(unsigned int target_freq,
 	cur_freq = cur_freq / MHZ;
 	cur_freq = cur_freq * MHZ;
 
+//printk("cpu freq %d hclk %d TAB=%d (%d,%d)\n",cpu_clk_tab[index][0],cpu_clk_tab[index][1],S3C64XX_FREQ_TAB,cur_freq,hclkx2_freq);
 	/* current frquency is same as target frequency */
 	if((cur_freq == cpu_clk_tab[index][0]) &&
 		(hclkx2_freq == cpu_clk_tab[index][1])) {
@@ -614,6 +596,18 @@ static struct clk init_clocks[] = {
 		.enable		= s3c64xx_sclk_ctrl,
 		.ctrlbit	= S3C_CLKCON_SCLK_CAM,
 		.set_rate	= s3c64xx_setrate_sclk_cam,
+        }, {
+                .name           = "dma0",
+                .id             = -1,
+                .parent         = &clk_h,
+                .enable         = s3c64xx_hclk_ctrl,
+                .ctrlbit        = S3C_CLKCON_HCLK_DMA0,
+        }, {
+                .name           = "dma1",
+                .id             = -1,
+                .parent         = &clk_h,
+                .enable         = s3c64xx_hclk_ctrl,
+                .ctrlbit        = S3C_CLKCON_HCLK_DMA1,
 	},
 };
 

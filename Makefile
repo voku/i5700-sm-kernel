@@ -231,7 +231,7 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 HOSTCC       = gcc
 HOSTCXX      = g++
 HOSTCFLAGS   = -Wall -Wstrict-prototypes -O3 -fomit-frame-pointer
-HOSTCXXFLAGS = -O3
+HOSTCXXFLAGS = -O3 -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -331,13 +331,50 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS	= -DMODULE -Ofast -marm -mfpu=vfp -mtune=arm1176jzf-s -march=armv6zk -mfloat-abi=softfp -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -funroll-loops
+MODFLAGS    = -DMODULE \
+				-O3 \
+				-pipe \
+				-marm \
+				-march=armv6zk \
+				-mtune=arm1176jzf-s \
+				-mfpu=vfp \
+				-mfloat-abi=softfp \
+				-floop-interchange \
+				-floop-strip-mine \
+				-floop-block \
+				-funroll-loops \
+				-ffast-math \
+				-funsafe-loop-optimizations \
+                -fno-tree-vectorize \
+                -fno-gcse \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400 
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -Ofast -march=armv6zk -mtune=arm1176jzf-s -floop-interchange -floop-strip-mine -floop-block -ffast-math -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
-AFLAGS_KERNEL	=
-
+CFLAGS_KERNEL   = -O3 \
+				-pipe \
+				-marm \
+				-march=armv6zk \
+				-mtune=arm1176jzf-s \
+				-mfpu=vfp \
+				-mfloat-abi=softfp \
+				-floop-interchange \
+				-floop-strip-mine \
+				-floop-block \
+				-funroll-loops \
+				-ffast-math \
+				-funsafe-loop-optimizations \
+				-fno-tree-vectorize \
+				-fno-gcse \
+				--param l1-cache-size=16 \
+				--param l1-cache-line-size=32 \
+				--param simultaneous-prefetches=6 \
+				--param prefetch-latency=400 
+AFLAGS_KERNEL   =
+CFLAGS_GCOV     = -fprofile-arcs -ftest-coverage
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
@@ -349,8 +386,29 @@ LINUXINCLUDE    := -Iinclude \
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration
+				-fno-strict-aliasing -fno-common \
+				-Werror-implicit-function-declaration \
+				-Wno-format-security \
+				-fno-delete-null-pointer-checks \
+				-O3 \
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funroll-loops \
+                -ffast-math \
+                -funsafe-loop-optimizations \
+                -fno-tree-vectorize \
+                -fno-gcse \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400 
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
@@ -527,7 +585,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -Ofast
+KBUILD_CFLAGS	+= -O3 -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
