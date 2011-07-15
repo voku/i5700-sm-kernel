@@ -5297,6 +5297,7 @@ int can_nice(const struct task_struct *p, const int nice)
 	return (nice_rlim <= p->signal->rlim[RLIMIT_NICE].rlim_cur ||
 		capable(CAP_SYS_NICE));
 }
+EXPORT_SYMBOL_GPL(can_nice); 
 
 #ifdef __ARCH_WANT_SYS_NICE
 

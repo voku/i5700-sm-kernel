@@ -61,7 +61,7 @@ build_modules()
 	echo "*************************************"
 	echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O3 \
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-Ofast \
                 -pipe \
                 -marm \
                 -march=armv6zk \
@@ -74,8 +74,6 @@ build_modules()
                 -funroll-loops \
                 -ffast-math \
                 -funsafe-loop-optimizations \
-                -fno-tree-vectorize \
-                -fno-gcse \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -83,7 +81,7 @@ build_modules()
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-Ofast \
                 -pipe \
                 -marm \
                 -march=armv6zk \
@@ -96,8 +94,6 @@ build_modules()
                 -funroll-loops \
                 -ffast-math \
                 -funsafe-loop-optimizations \
-                -fno-tree-vectorize \
-                -fno-gcse \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -110,7 +106,7 @@ build_modules()
 	do
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
-		make KDIR=$KERNEL_DIR CFLAGS="-O3 \
+		make KDIR=$KERNEL_DIR CFLAGS="-Ofast \
                 -pipe \
                 -marm \
                 -march=armv6zk \
@@ -123,8 +119,6 @@ build_modules()
                 -funroll-loops \
                 -ffast-math \
                 -funsafe-loop-optimizations \
-                -fno-tree-vectorize \
-                -fno-gcse \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \

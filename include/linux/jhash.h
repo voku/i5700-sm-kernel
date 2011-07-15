@@ -153,7 +153,7 @@ static inline u32 jhash_3words(u32 a, u32 b, u32 c, u32 initval)
 {
         a += JHASH_INITVAL + initval;
         b += JHASH_INITVAL + initval;
-        c += initval;
+        c += JHASH_INITVAL + initval;
 
         __jhash_final(a, b, c);
 
