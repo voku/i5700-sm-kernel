@@ -71,9 +71,12 @@ build_modules()
                 -floop-interchange \
                 -floop-strip-mine \
                 -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
                 -funroll-loops \
                 -ffast-math \
-                -funsafe-loop-optimizations \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -91,9 +94,12 @@ build_modules()
                 -floop-interchange \
                 -floop-strip-mine \
                 -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
                 -funroll-loops \
                 -ffast-math \
-                -funsafe-loop-optimizations \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -116,9 +122,12 @@ build_modules()
                 -floop-interchange \
                 -floop-strip-mine \
                 -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
                 -funroll-loops \
                 -ffast-math \
-                -funsafe-loop-optimizations \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \

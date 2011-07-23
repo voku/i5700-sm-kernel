@@ -333,42 +333,48 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 MODFLAGS    = -DMODULE \
 				-Ofast \
-				-pipe \
-				-marm \
-				-march=armv6zk \
-				-mtune=arm1176jzf-s \
-				-mfpu=vfp \
-				-mfloat-abi=softfp \
-				-floop-interchange \
-				-floop-strip-mine \
-				-floop-block \
-				-funroll-loops \
-				-ffast-math \
-				-funsafe-loop-optimizations \
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                -funroll-loops \
+                -ffast-math \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400 
+                --param prefetch-latency=400
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL   = -Ofast \
-				-pipe \
-				-marm \
-				-march=armv6zk \
-				-mtune=arm1176jzf-s \
-				-mfpu=vfp \
-				-mfloat-abi=softfp \
-				-floop-interchange \
-				-floop-strip-mine \
-				-floop-block \
-				-funroll-loops \
-				-ffast-math \
-				-funsafe-loop-optimizations \
-				--param l1-cache-size=16 \
-				--param l1-cache-line-size=32 \
-				--param simultaneous-prefetches=6 \
-				--param prefetch-latency=400 
+                -pipe \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                -funroll-loops \
+                -ffast-math \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400
 AFLAGS_KERNEL   =
 CFLAGS_GCOV     = -fprofile-arcs -ftest-coverage
 
@@ -396,15 +402,16 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -floop-interchange \
                 -floop-strip-mine \
                 -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
                 -funroll-loops \
                 -ffast-math \
-                -funsafe-loop-optimizations \
-                -fno-tree-vectorize \
-                -fno-gcse \
+                -fpeel-loops \
+                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400 
+                --param prefetch-latency=400
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
