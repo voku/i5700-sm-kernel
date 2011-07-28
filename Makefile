@@ -230,8 +230,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wstrict-prototypes -Ofast -fomit-frame-pointer
-HOSTCXXFLAGS = -Ofast -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
+HOSTCFLAGS   = -Wall -Wstrict-prototypes -O3 -fomit-frame-pointer
+HOSTCXXFLAGS = -O3 -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -332,22 +332,12 @@ CHECK		= sparse
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 MODFLAGS    = -DMODULE \
-				-Ofast \
+				-O3 \
                 -pipe \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funsafe-loop-optimizations \
-                -funsafe-math-optimizations \
-                -funroll-loops \
-                -ffast-math \
-                -fpeel-loops \
-                -fbranch-target-load-optimize2 \
+				-mfpu=vfp
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -367,10 +357,6 @@ CFLAGS_KERNEL   = -Ofast \
                 -floop-block \
                 -funsafe-loop-optimizations \
                 -funsafe-math-optimizations \
-                -funroll-loops \
-                -ffast-math \
-                -fpeel-loops \
-                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -404,10 +390,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -floop-block \
                 -funsafe-loop-optimizations \
                 -funsafe-math-optimizations \
-                -funroll-loops \
-                -ffast-math \
-                -fpeel-loops \
-                -fbranch-target-load-optimize2 \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
