@@ -21,7 +21,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/delay.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
@@ -70,7 +69,6 @@ struct spi_gpio {
  *		#define	SPI_MOSI_GPIO	120
  *		#define	SPI_SCK_GPIO	121
  *		#define	SPI_N_CHIPSEL	4
- *		#undef NEED_SPIDELAY 
  *		#include "spi_gpio.c"
  */
 
@@ -78,7 +76,6 @@ struct spi_gpio {
 #define DRIVER_NAME	"spi_gpio"
 
 #define GENERIC_BITBANG	/* vs tight inlines */
-#define NEED_SPIDELAY   1 
 
 /* all functions referencing these symbols must define pdata */
 #define SPI_MISO_GPIO	((pdata)->miso)
@@ -123,20 +120,12 @@ static inline int getmiso(const struct spi_device *spi)
 #undef pdata
 
 /*
- * NOTE:  to clock "as fast as we can", set spi_device.max_speed_hz 
- * and spi_transfer.speed_hz to 0. 
- * Otherwise this is a function of the requested device clock. 
- * Software overhead means we usually have trouble 
- * reaching even one Mbit/sec (except when we can inline bitops). So on small 
- * embedded devices with fast SPI slaves you usually don't need a delay. 
+ * NOTE:  this clocks "as fast as we can".  It "should" be a function of the
+ * requested device clock.  Software overhead means we usually have trouble
+ * reaching even one Mbit/sec (except when we can inline bitops), so for now
+ * we'll just assume we never need additional per-bit slowdowns.
  */
-static inline void spidelay(unsigned nsecs) 
-{ 
-#ifdef NEED_SPIDELAY 
-        if (unlikely(nsecs)) 
-                ndelay(nsecs); 
-#endif /* NEED_SPIDELAY */ 
-} 
+#define spidelay(nsecs)	do {} while (0)
 
 #define	EXPAND_BITBANG_TXRX
 #include <linux/spi/spi_bitbang.h>

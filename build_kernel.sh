@@ -62,26 +62,14 @@ build_modules()
 	echo
 
 	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O3 \
-                -marm
-                -march=armv6zk \
                 -mtune=arm1176jzf-s \
-                -mfpu=vfp 
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
+                -mfpu=vfp"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
 	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
-                -marm
-                -march=armv6zk \
                 -mtune=arm1176jzf-s \
-                -mfpu=vfp
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
+                -mfpu=vfp"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
@@ -91,14 +79,7 @@ build_modules()
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
 		make KDIR=$KERNEL_DIR CFLAGS="-O3 \
-                -marm 
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
+                -mtune=arm1176jzf-s"
 		if [ -e ./*.ko ]
 		then
 		    cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
