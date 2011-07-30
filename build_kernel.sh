@@ -20,7 +20,8 @@ PRODUCT=r880
 case "$PRODUCT" in
 
     r880)		
-                MODULES="g2d g3d mfc vibetonz bcm4325 btgpio camera cmm dpram jpeg mfc2 multipdp okmfc param pp rfs rotator staryuwlan wl wlan xsr vibetonz compcache"
+                MODULES_FAST="g2d g3d mfc jpeg cmm okmfc rotator"
+                MODULES_STABLE="vibetonz bcm4325 btgpio camera dpram multipdp param pp rfs wlan xsr compcache"
                 KERNEL_DEF_CONFIG=spica_android_defconfig
                 ;;
     
@@ -44,42 +45,109 @@ prepare_kernel()
 	echo "*************************************"
 	echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG 
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm prepare
+	make -C $KERNEL_DIR ARCH=arm prepare 
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
 }
 
-build_modules()
+build_modules_stable()
+{
+    echo "*************************************"
+    echo "*           build modules | stable  *"
+    echo "*************************************"
+    echo
+
+    make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG 
+    if [ $? != 0 ] ; then
+        exit 1
+    fi
+    make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules 
+    if [ $? != 0 ] ; then
+        exit 1
+    fi
+
+    for module in $MODULES_STABLE
+    do
+        echo cd $MODULES_DIR/$module
+        cd $MODULES_DIR/$module
+        make KDIR=$KERNEL_DIR 
+        if [ -e ./*.ko ]
+        then
+            cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
+        fi
+    done
+
+}
+
+
+build_modules_fast()
 {
 	echo "*************************************"
-	echo "*           build modules           *"
+	echo "*           build modules | fast    *"
 	echo "*************************************"
 	echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O3 \
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-Ofast \
+                -marm \
+                -march=armv6zk \
                 -mtune=arm1176jzf-s \
-                -mfpu=vfp"
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-Ofast \
+                -marm \
+                -march=armv6zk \
                 -mtune=arm1176jzf-s \
-                -mfpu=vfp"
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
 
-	for module in $MODULES
+	for module in $MODULES_fast
 	do
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
-		make KDIR=$KERNEL_DIR CFLAGS="-O3 \
-                -mtune=arm1176jzf-s"
+		make KDIR=$KERNEL_DIR CFLAGS="-Ofast \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 		if [ -e ./*.ko ]
 		then
 		    cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
@@ -98,12 +166,27 @@ build_kernel()
 	fi
 
 	#echo "make " -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG CFLAGS="-Ofast \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
 
-	build_modules
+	build_modules_fast
+	build_modules_stable
 
 	echo "*************************************"
 	echo "*           build kernel            *"
@@ -113,18 +196,14 @@ build_kernel()
 	cd $KERNEL_DIR
 
 	#make -j$CPU_JOB_NUM CONFIG_DEBUG_SECTION_MISMATCH=y
-	make -j$CPU_JOB_NUM
+	make -j$CPU_JOB_NUM 
 	if [ $? != 0 ] ; then
 		exit $?
 	fi
 
-	cp $KERNEL_DIR/drivers/net/wireless/bcm4325/dhd.ko   $KERNEL_DIR/../initramfs/lib/modules
-	cp $KERNEL_DIR/net/netfilter/xt_TCPMSS.ko            $KERNEL_DIR/../initramfs/lib/modules
-	cp $KERNEL_DIR/drivers/net/tun.ko                    $KERNEL_DIR/../initramfs/lib/modules
-
 	$CTNG_BIN_DIR/arm-linux-gnueabi-strip -g $KERNEL_DIR/../initramfs/lib/modules/*
  
-	make
+	make 
 }
 
 case "$OPTION" in

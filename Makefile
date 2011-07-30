@@ -331,15 +331,13 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS    = -DMODULE \
-                -O3 \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp
+MODFLAGS    = -DMODULE -O2 -marm -mfpu=vfp -march=armv6zk -mtune=arm1176jzf-s 
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL   = -Ofast \
                 -pipe \
+                -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
@@ -354,7 +352,6 @@ CFLAGS_KERNEL   = -Ofast \
                 --param simultaneous-prefetches=6 \
                 --param prefetch-latency=400
 AFLAGS_KERNEL   =
-CFLAGS_GCOV     = -fprofile-arcs -ftest-coverage
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
@@ -366,9 +363,8 @@ LINUXINCLUDE    := -Iinclude \
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration
-
+				-fno-strict-aliasing -fno-common \
+				-Werror-implicit-function-declaration 
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
