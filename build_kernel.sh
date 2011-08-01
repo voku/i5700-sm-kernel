@@ -20,8 +20,8 @@ PRODUCT=r880
 case "$PRODUCT" in
 
     r880)		
-                MODULES_FAST="g2d g3d mfc jpeg cmm okmfc rotator"
-                MODULES_STABLE="vibetonz bcm4325 btgpio camera dpram multipdp param pp rfs wlan xsr compcache"
+                MODULES_FAST="g2d g3d mfc jpeg cmm rotator"
+                MODULES_STABLE="vibetonz btgpio camera dpram multipdp param pp rfs wlan xsr compcache"
                 KERNEL_DEF_CONFIG=spica_android_defconfig
                 ;;
     
@@ -129,7 +129,7 @@ build_modules_fast()
 	    exit 1
 	fi
 
-	for module in $MODULES_fast
+	for module in $MODULES_FAST
 	do
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
