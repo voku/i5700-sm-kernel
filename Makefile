@@ -335,12 +335,13 @@ MODFLAGS    = -DMODULE -O2 -marm -mfpu=vfp -march=armv6zk -mtune=arm1176jzf-s
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL   = -Ofast \
+CFLAGS_KERNEL   = -O2 \
                 -pipe \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
+                -ffast-math \
                 -mfloat-abi=softfp \
                 -floop-interchange \
                 -floop-strip-mine \

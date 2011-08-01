@@ -62,11 +62,29 @@ build_modules_stable()
     echo "*************************************"
     echo
 
-    make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG 
+    make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG CFLAGS=" \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
     if [ $? != 0 ] ; then
         exit 1
     fi
-    make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules 
+    make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS=" \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
     if [ $? != 0 ] ; then
         exit 1
     fi
@@ -75,7 +93,17 @@ build_modules_stable()
     do
         echo cd $MODULES_DIR/$module
         cd $MODULES_DIR/$module
-        make KDIR=$KERNEL_DIR 
+        make KDIR=$KERNEL_DIR CFLAGS=" \
+                -marm \
+                -march=armv6zk \
+                -mtune=arm1176jzf-s \
+                -mfpu=vfp \
+                -mfloat-abi=softfp \
+                --param l1-cache-size=16 \
+                --param l1-cache-line-size=32 \
+                --param simultaneous-prefetches=6 \
+                --param prefetch-latency=400"
+ 
         if [ -e ./*.ko ]
         then
             cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
@@ -92,11 +120,12 @@ build_modules_fast()
 	echo "*************************************"
 	echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-Ofast \
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O2 \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
+				-ffast-math \
                 -mfloat-abi=softfp \
                 -floop-interchange \
                 -floop-strip-mine \
@@ -110,11 +139,12 @@ build_modules_fast()
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-Ofast \
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O2 \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
+				-ffast-math \
                 -mfloat-abi=softfp \
                 -floop-interchange \
                 -floop-strip-mine \
@@ -133,11 +163,12 @@ build_modules_fast()
 	do
 		echo cd $MODULES_DIR/$module
 		cd $MODULES_DIR/$module
-		make KDIR=$KERNEL_DIR CFLAGS="-Ofast \
+		make KDIR=$KERNEL_DIR CFLAGS="-O2 \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
+                -ffast-math \
                 -mfloat-abi=softfp \
                 -floop-interchange \
                 -floop-strip-mine \
