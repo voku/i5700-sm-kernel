@@ -230,8 +230,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wstrict-prototypes -Ofast -fomit-frame-pointer
-HOSTCXXFLAGS = -Ofast -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-frame-pointer
+HOSTCXXFLAGS = -Ofast
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -343,7 +343,6 @@ MODFLAGS    = -DMODULE \
 				-floop-strip-mine \
 				-floop-block \
 				-funroll-loops \
-				-ffast-math \
 				-funsafe-loop-optimizations \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
@@ -363,7 +362,6 @@ CFLAGS_KERNEL   = -Ofast \
 				-floop-strip-mine \
 				-floop-block \
 				-funroll-loops \
-				-ffast-math \
 				-funsafe-loop-optimizations \
 				--param l1-cache-size=16 \
 				--param l1-cache-line-size=32 \
@@ -397,7 +395,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -floop-strip-mine \
                 -floop-block \
                 -funroll-loops \
-                -ffast-math \
                 -funsafe-loop-optimizations \
                 -fno-tree-vectorize \
                 -fno-gcse \
@@ -581,7 +578,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -Ofast -funsafe-loop-optimizations -mfloat-abi=softfp -mfpu=vfp -funroll-loops
+KBUILD_CFLAGS	+= -Ofast
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
@@ -635,6 +632,9 @@ KBUILD_CFLAGS	+= $(call cc-option,-fwrapv)
 
 # revert to pre-gcc-4.4 behaviour of .eh_frame
 KBUILD_CFLAGS	+= $(call cc-option,-fno-dwarf2-cfi-asm)
+
+# conserve stack if available
+KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 # But warn user when we do so

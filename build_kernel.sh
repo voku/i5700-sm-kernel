@@ -121,8 +121,7 @@ build_kernel()
 
 	#echo "make " -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
 
-	build_modules_fast
-	build_modules_stable
+	build_modules
 
 	echo "*************************************"
 	echo "*           build kernel            *"
