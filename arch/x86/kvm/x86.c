@@ -1316,8 +1316,6 @@ static int kvm_dev_ioctl_get_supported_cpuid(struct kvm_cpuid2 *cpuid,
 
 	if (cpuid->nent < 1)
 		goto out;
-	if (cpuid->nent > KVM_MAX_CPUID_ENTRIES)
-		cpuid->nent = KVM_MAX_CPUID_ENTRIES;
 	r = -ENOMEM;
 	cpuid_entries = vmalloc(sizeof(struct kvm_cpuid_entry2) * cpuid->nent);
 	if (!cpuid_entries)
@@ -4090,7 +4088,6 @@ fail:
 
 void kvm_arch_vcpu_uninit(struct kvm_vcpu *vcpu)
 {
-	kfree(vcpu->arch.mce_banks);
 	kvm_free_lapic(vcpu);
 	down_read(&vcpu->kvm->slots_lock);
 	kvm_mmu_destroy(vcpu);

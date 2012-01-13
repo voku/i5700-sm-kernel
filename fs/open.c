@@ -287,9 +287,10 @@ out:
 	return error;
 }
 
-SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
+SYSCALL_DEFINE2(truncate, const char __user *, path, unsigned long, length)
 {
-	return do_sys_truncate(path, length);
+	/* on 32-bit boxen it will cut the range 2^31--2^32-1 off */
+	return do_sys_truncate(path, (long)length);
 }
 
 static long do_sys_ftruncate(unsigned int fd, loff_t length, int small)

@@ -331,7 +331,7 @@ static void iwl5000_gain_computation(struct iwl_priv *priv,
 			(s32)average_noise[i])) / 1500;
 		/* bound gain by 2 bits value max, 3rd bit is sign */
 		data->delta_gain_code[i] =
-			min(abs(delta_g), (long) CHAIN_NOISE_MAX_DELTA_GAIN_CODE);
+			min(abs(delta_g), CHAIN_NOISE_MAX_DELTA_GAIN_CODE);
 
 		if (delta_g < 0)
 			/* set negative sign */
@@ -1194,12 +1194,6 @@ static int iwl5000_tx_status_reply_tx(struct iwl_priv *priv,
 					   agg->frame_count, txq_id, idx);
 
 			hdr = iwl_tx_queue_get_hdr(priv, txq_id, idx);
-			if (!hdr) {
-				IWL_ERR(priv,
-					"BUG_ON idx doesn't point to valid skb"
-					" idx=%d, txq_id=%d\n", idx, txq_id);
-				return -1;
-			}
 
 			sc = le16_to_cpu(hdr->seq_ctrl);
 			if (idx != (SEQ_TO_SN(sc) & 0xff)) {

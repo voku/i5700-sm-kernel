@@ -30,7 +30,6 @@
 #include <linux/phy.h>
 #include <linux/cache.h>
 #include <linux/io.h>
-#include <asm/cacheflush.h>
 
 #include "sh_eth.h"
 

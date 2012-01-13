@@ -101,7 +101,8 @@ static const struct dmi_system_id lifebook_dmi_table[] = {
 		.matches = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "CF-72"),
 		},
-		.callback = lifebook_set_6byte_proto,
+		.callback = lifebook_set_serio_phys,
+		.driver_data = "isa0060/serio3",
 	},
 	{
 		.ident = "Lifebook B142",

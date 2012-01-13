@@ -88,7 +88,7 @@ int nr_processes(void)
 	int cpu;
 	int total = 0;
 
-	for_each_possible_cpu(cpu)
+	for_each_online_cpu(cpu)
 		total += per_cpu(process_counts, cpu);
 
 	return total;
@@ -431,14 +431,6 @@ __setup("coredump_filter=", coredump_filter_setup);
 
 #include <linux/init_task.h>
 
-static void mm_init_aio(struct mm_struct *mm)
-{
-#ifdef CONFIG_AIO
-	spin_lock_init(&mm->ioctx_lock);
-	INIT_HLIST_HEAD(&mm->ioctx_list);
-#endif
-}
-
 static struct mm_struct * mm_init(struct mm_struct * mm, struct task_struct *p)
 {
 	atomic_set(&mm->mm_users, 1);
@@ -451,9 +443,10 @@ static struct mm_struct * mm_init(struct mm_struct * mm, struct task_struct *p)
 	set_mm_counter(mm, file_rss, 0);
 	set_mm_counter(mm, anon_rss, 0);
 	spin_lock_init(&mm->page_table_lock);
+	spin_lock_init(&mm->ioctx_lock);
+	INIT_HLIST_HEAD(&mm->ioctx_list);
 	mm->free_area_cache = TASK_UNMAPPED_BASE;
 	mm->cached_hole_size = ~0UL;
-	mm_init_aio(mm);
 	mm_init_owner(mm, p);
 
 	if (likely(!mm_alloc_pgd(mm))) {
@@ -563,15 +556,11 @@ void mm_release(struct task_struct *tsk, struct mm_struct *mm)
 
 	/* Get rid of any futexes when releasing the mm */
 #ifdef CONFIG_FUTEX
-	if (unlikely(tsk->robust_list)) {
+	if (unlikely(tsk->robust_list))
 		exit_robust_list(tsk);
-		tsk->robust_list = NULL;
-	}
 #ifdef CONFIG_COMPAT
-	if (unlikely(tsk->compat_robust_list)) {
+	if (unlikely(tsk->compat_robust_list))
 		compat_exit_robust_list(tsk);
-		tsk->compat_robust_list = NULL;
-	}
 #endif
 #endif
 
@@ -990,16 +979,6 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	 * for various simplifications in other code.
 	 */
 	if ((clone_flags & CLONE_SIGHAND) && !(clone_flags & CLONE_VM))
-		return ERR_PTR(-EINVAL);
-
-	/*
-	 * Siblings of global init remain as zombies on exit since they are
-	 * not reaped by their parent (swapper). To solve this and to avoid
-	 * multi-rooted process trees, prevent global and container-inits
-	 * from creating siblings.
-	 */
-	if ((clone_flags & CLONE_PARENT) &&
-				current->signal->flags & SIGNAL_UNKILLABLE)
 		return ERR_PTR(-EINVAL);
 
 	retval = security_task_create(clone_flags);

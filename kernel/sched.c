@@ -694,9 +694,15 @@ static inline void update_rq_clock(struct rq *rq)
  * This interface allows printk to be called with the runqueue lock
  * held and know whether or not it is OK to wake up the klogd.
  */
-int runqueue_is_locked(int cpu)
+int runqueue_is_locked(void)
 {
-	return spin_is_locked(&cpu_rq(cpu)->lock);
+	int cpu = get_cpu();
+	struct rq *rq = cpu_rq(cpu);
+	int ret;
+
+	ret = spin_is_locked(&rq->lock);
+	put_cpu();
+	return ret;
 }
 
 /*
@@ -1844,9 +1850,6 @@ task_hot(struct task_struct *p, u64 now, struct sched_domain *sd)
 {
 	s64 delta;
 
-	if (p->sched_class != &fair_sched_class)
-		return 0;
-
 	/*
 	 * Buddy candidates are cache hot:
 	 */
@@ -1854,6 +1857,9 @@ task_hot(struct task_struct *p, u64 now, struct sched_domain *sd)
 			(&p->se == cfs_rq_of(&p->se)->next ||
 			 &p->se == cfs_rq_of(&p->se)->last))
 		return 1;
+
+	if (p->sched_class != &fair_sched_class)
+		return 0;
 
 	if (sysctl_sched_migration_cost == -1)
 		return 1;
@@ -2938,6 +2944,10 @@ static void pull_task(struct rq *src_rq, struct task_struct *p,
 	deactivate_task(src_rq, p, 0);
 	set_task_cpu(p, this_cpu);
 	activate_task(this_rq, p, 0);
+	/*
+	 * Note that idle threads have a prio of MAX_PRIO, for this test
+	 * to be always true for them.
+	 */
 	check_preempt_curr(this_rq, p, 0);
 }
 
@@ -6182,6 +6192,7 @@ void __cpuinit init_idle(struct task_struct *idle, int cpu)
 	__sched_fork(idle);
 	idle->se.exec_start = sched_clock();
 
+	idle->prio = idle->normal_prio = MAX_PRIO;
 	cpumask_copy(&idle->cpus_allowed, cpumask_of(cpu));
 	__set_task_cpu(idle, cpu);
 
@@ -6862,6 +6873,7 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 		spin_lock_irq(&rq->lock);
 		update_rq_clock(rq);
 		deactivate_task(rq, rq->idle, 0);
+		rq->idle->static_prio = MAX_PRIO;
 		__setscheduler(rq, rq->idle, SCHED_NORMAL, 0);
 		rq->idle->sched_class = &idle_sched_class;
 		migrate_dead_tasks(cpu);
@@ -7099,8 +7111,6 @@ sd_parent_degenerate(struct sched_domain *sd, struct sched_domain *parent)
 
 static void free_rootdomain(struct root_domain *rd)
 {
-	synchronize_sched();
-
 	cpupri_cleanup(&rd->cpupri);
 
 	free_cpumask_var(rd->rto_mask);
@@ -8313,7 +8323,6 @@ void __init sched_init_smp(void)
 	cpumask_var_t non_isolated_cpus;
 
 	alloc_cpumask_var(&non_isolated_cpus, GFP_KERNEL);
-	alloc_cpumask_var(&fallback_doms, GFP_KERNEL);
 
 #if defined(CONFIG_NUMA)
 	sched_group_nodes_bycpu = kzalloc(nr_cpu_ids * sizeof(void **),
@@ -8345,6 +8354,7 @@ void __init sched_init_smp(void)
 	sched_init_granularity();
 	free_cpumask_var(non_isolated_cpus);
 
+	alloc_cpumask_var(&fallback_doms, GFP_KERNEL);
 	init_sched_rt_class();
 }
 #else

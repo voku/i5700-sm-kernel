@@ -577,13 +577,7 @@ static void i5000_process_nonfatal_error_info(struct mem_ctl_info *mci,
 		debugf0("\tUncorrected bits= 0x%x\n", ue_errors);
 
 		branch = EXTRACT_FBDCHAN_INDX(info->ferr_nf_fbd);
-
-		/*
-		 * According with i5000 datasheet, bit 28 has no significance
-		 * for errors M4Err-M12Err and M17Err-M21Err, on FERR_NF_FBD
-		 */
-		channel = branch & 2;
-
+		channel = branch;
 		bank = NREC_BANK(info->nrecmema);
 		rank = NREC_RANK(info->nrecmema);
 		rdwr = NREC_RDWR(info->nrecmema);
@@ -1179,7 +1173,7 @@ static void i5000_get_mc_regs(struct mem_ctl_info *mci)
 			pci_read_config_word(pvt->branch_1, where,
 					&pvt->b1_mtr[slot_row]);
 			debugf2("MTR%d where=0x%x B1 value=0x%x\n", slot_row,
-				where, pvt->b1_mtr[slot_row]);
+				where, pvt->b0_mtr[slot_row]);
 		} else {
 			pvt->b1_mtr[slot_row] = 0;
 		}
@@ -1238,7 +1232,7 @@ static int i5000_init_csrows(struct mem_ctl_info *mci)
 	struct csrow_info *p_csrow;
 	int empty, channel_count;
 	int max_csrows;
-	int mtr, mtr1;
+	int mtr;
 	int csrow_megs;
 	int channel;
 	int csrow;
@@ -1257,10 +1251,9 @@ static int i5000_init_csrows(struct mem_ctl_info *mci)
 
 		/* use branch 0 for the basis */
 		mtr = pvt->b0_mtr[csrow >> 1];
-		mtr1 = pvt->b1_mtr[csrow >> 1];
 
 		/* if no DIMMS on this row, continue */
-		if (!MTR_DIMMS_PRESENT(mtr) && !MTR_DIMMS_PRESENT(mtr1))
+		if (!MTR_DIMMS_PRESENT(mtr))
 			continue;
 
 		/* FAKE OUT VALUES, FIXME */

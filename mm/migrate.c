@@ -147,7 +147,7 @@ out:
 static void remove_file_migration_ptes(struct page *old, struct page *new)
 {
 	struct vm_area_struct *vma;
-	struct address_space *mapping = new->mapping;
+	struct address_space *mapping = page_mapping(new);
 	struct prio_tree_iter iter;
 	pgoff_t pgoff = new->index << (PAGE_CACHE_SHIFT - PAGE_SHIFT);
 
@@ -597,7 +597,7 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 	struct page *newpage = get_new_page(page, private, &result);
 	int rcu_locked = 0;
 	int charge = 0;
-	struct mem_cgroup *mem = NULL;
+	struct mem_cgroup *mem;
 
 	if (!newpage)
 		return -ENOMEM;
@@ -664,15 +664,13 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 			 *    needs to be effective.
 			 */
 			try_to_free_buffers(page);
-			goto rcu_unlock;
 		}
-		goto skip_unmap;
+		goto rcu_unlock;
 	}
 
 	/* Establish migration ptes or remove ptes */
 	try_to_unmap(page, 1);
 
-skip_unmap:
 	if (!page_mapped(page))
 		rc = move_to_new_page(newpage, page);
 
@@ -937,9 +935,6 @@ static int do_pages_move(struct mm_struct *mm, struct task_struct *task,
 				goto out_pm;
 
 			err = -ENODEV;
-			if (node < 0 || node >= MAX_NUMNODES)
-				goto out_pm;
-
 			if (!node_state(node, N_HIGH_MEMORY))
 				goto out_pm;
 

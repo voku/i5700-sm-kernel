@@ -19,9 +19,7 @@
 #include <linux/completion.h>
 #include <linux/platform_device.h>
 #include <linux/i2c-pnx.h>
-#include <linux/io.h>
 #include <mach/hardware.h>
-#include <mach/i2c.h>
 #include <asm/irq.h>
 #include <asm/uaccess.h>
 
@@ -55,9 +53,6 @@ static inline void i2c_pnx_arm_timer(struct i2c_adapter *adap)
 	struct i2c_pnx_algo_data *data = adap->algo_data;
 	struct timer_list *timer = &data->mif.timer;
 	int expires = I2C_PNX_TIMEOUT / (1000 / HZ);
-
-	if (expires <= 1)
-		expires = 2;
 
 	del_timer_sync(timer);
 
@@ -649,7 +644,7 @@ static int __devinit i2c_pnx_probe(struct platform_device *pdev)
 	return 0;
 
 out_irq:
-	free_irq(alg_data->irq, i2c_pnx->adapter);
+	free_irq(alg_data->irq, alg_data);
 out_clock:
 	i2c_pnx->set_clock_stop(pdev);
 out_unmap:
@@ -668,7 +663,7 @@ static int __devexit i2c_pnx_remove(struct platform_device *pdev)
 	struct i2c_adapter *adap = i2c_pnx->adapter;
 	struct i2c_pnx_algo_data *alg_data = adap->algo_data;
 
-	free_irq(alg_data->irq, i2c_pnx->adapter);
+	free_irq(alg_data->irq, alg_data);
 	i2c_del_adapter(adap);
 	i2c_pnx->set_clock_stop(pdev);
 	iounmap((void *)alg_data->ioaddr);

@@ -169,29 +169,6 @@ static int sdio_enable_wide(struct mmc_card *card)
 }
 
 /*
- * If desired, disconnect the pull-up resistor on CD/DAT[3] (pin 1)
- * of the card. This may be required on certain setups of boards,
- * controllers and embedded sdio device which do not need the card's
- * pull-up. As a result, card detection is disabled and power is saved.
- */
-static int sdio_disable_cd(struct mmc_card *card)
-{
-	int ret;
-	u8 ctrl;
-
-	if (!card->cccr.disable_cd)
-		return 0;
-
-	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_IF, 0, &ctrl);
-	if (ret)
-		return ret;
-
-	ctrl |= SDIO_BUS_CD_DISABLE;
-
-	return mmc_io_rw_direct(card, 1, 0, SDIO_CCCR_IF, ctrl, NULL);
-}
-
-/*
  * Test if the card supports high-speed mode and, if so, switch to it.
  */
 static int sdio_enable_hs(struct mmc_card *card)
@@ -300,6 +277,13 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		       "below the defined range. These will be ignored.\n",
 		       mmc_hostname(host));
 		ocr &= ~0x7F;
+	}
+
+	if (ocr & MMC_VDD_165_195) {
+		printk(KERN_WARNING "%s: SDIO card claims to support the "
+		       "incompletely defined 'low voltage range'. This "
+		       "will be ignored.\n", mmc_hostname(host));
+		ocr &= ~MMC_VDD_165_195;
 	}
 
 	host->ocr = mmc_select_voltage(host, ocr);
@@ -433,13 +417,6 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		goto remove;
 
 	/*
-	 * If needed, disconnect card detection pull-up resistor.
-	 */
-	err = sdio_disable_cd(card);
-	if (err)
-		goto remove;
-
-	/*
 	 * Initialize (but don't add) all present functions.
 	 */
 	for (i = 0;i < funcs;i++) {
@@ -550,28 +527,7 @@ int sdio_reset_comm(struct mmc_card *card)
 			goto err;
 	}
 
-	/*
-	 * Switch to high-speed (if supported).
-	 */
-	err = sdio_enable_hs(card);
-	if (err)
-		goto err;
-
-	/*
-	 * Change to the card's maximum speed.
-	 */
-	if (mmc_card_highspeed(card)) {
-		/*
-		 * The SDIO specification doesn't mention how
-		 * the CIS transfer speed register relates to
-		 * high-speed, but it seems that 50 MHz is
-		 * mandatory.
-		 */
-		mmc_set_clock(host, 50000000);
-	} else {
-		mmc_set_clock(host, card->cis.max_dtr);
-	}
-
+	mmc_set_clock(host, card->cis.max_dtr);
 	err = sdio_enable_wide(card);
 	if (err)
 		goto err;

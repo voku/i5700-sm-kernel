@@ -1544,8 +1544,7 @@ cifs_get_tcp_session(struct smb_vol *volume_info)
 
 out_err:
 	if (tcp_ses) {
-		if (!IS_ERR(tcp_ses->hostname))
-			kfree(tcp_ses->hostname);
+		kfree(tcp_ses->hostname);
 		if (tcp_ses->ssocket)
 			sock_release(tcp_ses->ssocket);
 		kfree(tcp_ses);
@@ -2186,7 +2185,15 @@ is_path_accessible(int xid, struct cifsTconInfo *tcon,
 		   struct cifs_sb_info *cifs_sb, const char *full_path)
 {
 	int rc;
+	__u64 inode_num;
 	FILE_ALL_INFO *pfile_info;
+
+	rc = CIFSGetSrvInodeNumber(xid, tcon, full_path, &inode_num,
+				   cifs_sb->local_nls,
+				   cifs_sb->mnt_cifs_flags &
+						CIFS_MOUNT_MAP_SPECIAL_CHR);
+	if (rc != -EOPNOTSUPP)
+		return rc;
 
 	pfile_info = kmalloc(sizeof(FILE_ALL_INFO), GFP_KERNEL);
 	if (pfile_info == NULL)

@@ -250,7 +250,7 @@ extern asmlinkage void schedule_tail(struct task_struct *prev);
 extern void init_idle(struct task_struct *idle, int cpu);
 extern void init_idle_bootup_task(struct task_struct *idle);
 
-extern int runqueue_is_locked(int cpu);
+extern int runqueue_is_locked(void);
 extern void task_rq_unlock_wait(struct task_struct *p);
 
 extern cpumask_var_t nohz_cpu_mask;
@@ -1910,18 +1910,11 @@ static inline int is_si_special(const struct siginfo *info)
 	return info <= SEND_SIG_FORCED;
 }
 
-/*
- * True if we are on the alternate signal stack.
- */
+/* True if we are on the alternate signal stack.  */
+
 static inline int on_sig_stack(unsigned long sp)
 {
-#ifdef CONFIG_STACK_GROWSUP
-	return sp >= current->sas_ss_sp &&
-		sp - current->sas_ss_sp < current->sas_ss_size;
-#else
-	return sp > current->sas_ss_sp &&
-		sp - current->sas_ss_sp <= current->sas_ss_size;
-#endif
+	return (sp - current->sas_ss_sp < current->sas_ss_size);
 }
 
 static inline int sas_ss_flags(unsigned long sp)
@@ -2146,7 +2139,7 @@ extern int __fatal_signal_pending(struct task_struct *p);
 
 static inline int fatal_signal_pending(struct task_struct *p)
 {
-    return signal_pending(p) && __fatal_signal_pending(p);
+	return signal_pending(p) && __fatal_signal_pending(p);
 }
 
 static inline int signal_pending_state(long state, struct task_struct *p)
@@ -2361,28 +2354,6 @@ static inline void mm_init_owner(struct mm_struct *mm, struct task_struct *p)
 #endif /* CONFIG_MM_OWNER */
 
 #define TASK_STATE_TO_CHAR_STR "RSDTtZX"
-
-static inline unsigned long task_rlimit(const struct task_struct *tsk,
-		unsigned int limit)
-{
-	return ACCESS_ONCE(tsk->signal->rlim[limit].rlim_cur);
-}
-
-static inline unsigned long task_rlimit_max(const struct task_struct *tsk,
-		unsigned int limit)
-{
-	return ACCESS_ONCE(tsk->signal->rlim[limit].rlim_max);
-}
-
-static inline unsigned long rlimit(unsigned int limit)
-{
-	return task_rlimit(current, limit);
-}
-
-static inline unsigned long rlimit_max(unsigned int limit)
-{
-	return task_rlimit_max(current, limit);
-}
 
 #endif /* __KERNEL__ */
 

@@ -62,7 +62,7 @@ static void * r1bio_pool_alloc(gfp_t gfp_flags, void *data)
 
 	/* allocate a r1bio with room for raid_disks entries in the bios array */
 	r1_bio = kzalloc(size, gfp_flags);
-	if (!r1_bio && pi->mddev)
+	if (!r1_bio)
 		unplug_slaves(pi->mddev);
 
 	return r1_bio;
@@ -847,7 +847,7 @@ static int make_request(struct request_queue *q, struct bio * bio)
 		read_bio->bi_sector = r1_bio->sector + mirror->rdev->data_offset;
 		read_bio->bi_bdev = mirror->rdev->bdev;
 		read_bio->bi_end_io = raid1_end_read_request;
-		read_bio->bi_rw = READ | (do_sync << BIO_RW_SYNCIO);
+		read_bio->bi_rw = READ | do_sync;
 		read_bio->bi_private = r1_bio;
 
 		generic_make_request(read_bio);
@@ -939,8 +939,7 @@ static int make_request(struct request_queue *q, struct bio * bio)
 		mbio->bi_sector	= r1_bio->sector + conf->mirrors[i].rdev->data_offset;
 		mbio->bi_bdev = conf->mirrors[i].rdev->bdev;
 		mbio->bi_end_io	= raid1_end_write_request;
-		mbio->bi_rw = WRITE | (do_barriers << BIO_RW_BARRIER) |
-			(do_sync << BIO_RW_SYNCIO);
+		mbio->bi_rw = WRITE | do_barriers | do_sync;
 		mbio->bi_private = r1_bio;
 
 		if (behind_pages) {
@@ -1618,8 +1617,7 @@ static void raid1d(mddev_t *mddev)
 						conf->mirrors[i].rdev->data_offset;
 					bio->bi_bdev = conf->mirrors[i].rdev->bdev;
 					bio->bi_end_io = raid1_end_write_request;
-					bio->bi_rw = WRITE |
-						(do_sync << BIO_RW_SYNCIO);
+					bio->bi_rw = WRITE | do_sync;
 					bio->bi_private = r1_bio;
 					r1_bio->bios[i] = bio;
 					generic_make_request(bio);
@@ -1641,12 +1639,11 @@ static void raid1d(mddev_t *mddev)
 					       r1_bio->sector,
 					       r1_bio->sectors);
 				unfreeze_array(conf);
-			} else
-				md_error(mddev,
-					 conf->mirrors[r1_bio->read_disk].rdev);
+			}
 
 			bio = r1_bio->bios[r1_bio->read_disk];
-			if ((disk=read_balance(conf, r1_bio)) == -1) {
+			if ((disk=read_balance(conf, r1_bio)) == -1 ||
+			    disk == r1_bio->read_disk) {
 				printk(KERN_ALERT "raid1: %s: unrecoverable I/O"
 				       " read error for block %llu\n",
 				       bdevname(bio->bi_bdev,b),
@@ -1669,13 +1666,12 @@ static void raid1d(mddev_t *mddev)
 				bio->bi_sector = r1_bio->sector + rdev->data_offset;
 				bio->bi_bdev = rdev->bdev;
 				bio->bi_end_io = raid1_end_read_request;
-				bio->bi_rw = READ | (do_sync << BIO_RW_SYNCIO);
+				bio->bi_rw = READ | do_sync;
 				bio->bi_private = r1_bio;
 				unplug = 1;
 				generic_make_request(bio);
 			}
 		}
-		cond_resched();
 	}
 	if (unplug)
 		unplug_slaves(mddev);
@@ -1963,14 +1959,13 @@ static int run(mddev_t *mddev)
 	conf->poolinfo = kmalloc(sizeof(*conf->poolinfo), GFP_KERNEL);
 	if (!conf->poolinfo)
 		goto out_no_mem;
-	conf->poolinfo->mddev = NULL;
+	conf->poolinfo->mddev = mddev;
 	conf->poolinfo->raid_disks = mddev->raid_disks;
 	conf->r1bio_pool = mempool_create(NR_RAID1_BIOS, r1bio_pool_alloc,
 					  r1bio_pool_free,
 					  conf->poolinfo);
 	if (!conf->r1bio_pool)
 		goto out_no_mem;
-	conf->poolinfo->mddev = mddev;
 
 	spin_lock_init(&conf->device_lock);
 	mddev->queue->queue_lock = &conf->device_lock;

@@ -295,15 +295,6 @@ static inline int is_vmalloc_addr(const void *x)
 	return 0;
 #endif
 }
-#ifdef CONFIG_MMU
-extern int is_vmalloc_or_module_addr(const void *x);
-#else
-static inline int is_vmalloc_or_module_addr(const void *x)
-{
-    return 0;
-}
-#endif
-
 
 static inline struct page *compound_head(struct page *page)
 {
@@ -823,9 +814,8 @@ static inline void unmap_shared_mapping_range(struct address_space *mapping,
 	unmap_mapping_range(mapping, holebegin, holelen, 0);
 }
 
-extern void truncate_pagecache(struct inode *inode, loff_t old, loff_t new);
-extern int vmtruncate(struct inode *inode, loff_t offset);
-extern int vmtruncate_range(struct inode *inode, loff_t offset, loff_t end);
+extern int vmtruncate(struct inode * inode, loff_t offset);
+extern int vmtruncate_range(struct inode * inode, loff_t offset, loff_t end);
 
 #ifdef CONFIG_MMU
 extern int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,

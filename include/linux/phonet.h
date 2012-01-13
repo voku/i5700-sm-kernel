@@ -38,7 +38,6 @@
 #define PNPIPE_IFINDEX		2
 
 #define PNADDR_ANY		0
-#define PNADDR_BROADCAST	0xFC
 #define PNPORT_RESOURCE_ROUTING	0
 
 /* Values for PNPIPE_ENCAP option */

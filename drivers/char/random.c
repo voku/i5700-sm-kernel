@@ -1033,6 +1033,12 @@ random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 				/* like a named pipe */
 	}
 
+	/*
+	 * If we gave the user some bytes, update the access time.
+	 */
+	if (count)
+		file_accessed(file);
+
 	return (count ? count : retval);
 }
 
@@ -1083,6 +1089,7 @@ static ssize_t random_write(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *ppos)
 {
 	size_t ret;
+	struct inode *inode = file->f_path.dentry->d_inode;
 
 	ret = write_pool(&blocking_pool, buffer, count);
 	if (ret)
@@ -1091,6 +1098,8 @@ static ssize_t random_write(struct file *file, const char __user *buffer,
 	if (ret)
 		return ret;
 
+	inode->i_mtime = current_fs_time(inode->i_sb);
+	mark_inode_dirty(inode);
 	return (ssize_t)count;
 }
 

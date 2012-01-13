@@ -513,14 +513,14 @@ static int ql_set_routing_reg(struct ql_adapter *qdev, u32 index, u32 mask,
 		}
 	case RT_IDX_MCAST:	/* Pass up All Multicast frames. */
 		{
-			value = RT_IDX_DST_DFLT_Q |	/* dest */
+			value = RT_IDX_DST_CAM_Q |	/* dest */
 			    RT_IDX_TYPE_NICQ |	/* type */
 			    (RT_IDX_ALLMULTI_SLOT << RT_IDX_IDX_SHIFT);/* index */
 			break;
 		}
 	case RT_IDX_MCAST_MATCH:	/* Pass up matched Multicast frames. */
 		{
-			value = RT_IDX_DST_DFLT_Q |	/* dest */
+			value = RT_IDX_DST_CAM_Q |	/* dest */
 			    RT_IDX_TYPE_NICQ |	/* type */
 			    (RT_IDX_MCAST_MATCH_SLOT << RT_IDX_IDX_SHIFT);/* index */
 			break;
@@ -1805,17 +1805,15 @@ static irqreturn_t qlge_isr(int irq, void *dev_id)
 	/*
 	 * Check MPI processor activity.
 	 */
-	if ((var & STS_PI) &&
-		(ql_read32(qdev, INTR_MASK) & INTR_MASK_PI)) {
+	if (var & STS_PI) {
 		/*
 		 * We've got an async event or mailbox completion.
 		 * Handle it and clear the source of the interrupt.
 		 */
 		QPRINTK(qdev, INTR, ERR, "Got MPI processor interrupt.\n");
 		ql_disable_completion_interrupt(qdev, intr_context->intr);
-		ql_write32(qdev, INTR_MASK, (INTR_MASK_PI << 16));
-		queue_delayed_work_on(smp_processor_id(),
-				qdev->workqueue, &qdev->mpi_work, 0);
+		queue_delayed_work_on(smp_processor_id(), qdev->workqueue,
+				      &qdev->mpi_work, 0);
 		work_done++;
 	}
 
@@ -3008,13 +3006,6 @@ static int ql_adapter_initialize(struct ql_adapter *qdev)
 
 	ql_write32(qdev, SPLT_HDR, SPLT_HDR_EP |
 		min(SMALL_BUFFER_SIZE, MAX_SPLIT_SIZE));
-
-	/* Set RX packet routing to use port/pci function on which the
-	 * packet arrived on in addition to usual frame routing.
-	 * This is helpful on bonding where both interfaces can have
-	 * the same MAC address.
-	 */
-	ql_write32(qdev, RST_FO, RST_FO_RR_MASK | RST_FO_RR_RCV_FUNC_CQ);
 
 	/* Start up the rx queues. */
 	for (i = 0; i < qdev->rx_ring_count; i++) {

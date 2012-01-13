@@ -130,11 +130,6 @@ LIST_HEAD(amd_iommu_list);		/* list of all AMD IOMMUs in the
 					   system */
 
 /*
- * Set to true if ACPI table parsing and hardware intialization went properly
- */
-static bool amd_iommu_initialized;
-
-/*
  * Pointer to the device table which is shared by all AMD IOMMUs
  * it is indexed by the PCI device id or the HT unit id and contains
  * information about the domain the device belongs to as well as the
@@ -239,7 +234,7 @@ static void __init iommu_feature_enable(struct amd_iommu *iommu, u8 bit)
 	writel(ctrl, iommu->mmio_base + MMIO_CONTROL_OFFSET);
 }
 
-static void iommu_feature_disable(struct amd_iommu *iommu, u8 bit)
+static void __init iommu_feature_disable(struct amd_iommu *iommu, u8 bit)
 {
 	u32 ctrl;
 
@@ -766,8 +761,6 @@ static int __init init_iommu_all(struct acpi_table_header *table)
 	}
 	WARN_ON(p != end);
 
-	amd_iommu_initialized = true;
-
 	return 0;
 }
 
@@ -1125,9 +1118,6 @@ int __init amd_iommu_init(void)
 	 */
 	ret = -ENODEV;
 	if (acpi_table_parse("IVRS", init_iommu_all) != 0)
-		goto free;
-
-	if (!amd_iommu_initialized)
 		goto free;
 
 	if (acpi_table_parse("IVRS", init_memory_definitions) != 0)

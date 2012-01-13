@@ -928,14 +928,13 @@ void __init mem_init(void)
 	initsize =  (unsigned long) &__init_end - (unsigned long) &__init_begin;
 
 	/* Register memory areas for /proc/kcore */
-	kclist_add(&kcore_mem, __va(0), max_low_pfn << PAGE_SHIFT, KCORE_RAM);
+	kclist_add(&kcore_mem, __va(0), max_low_pfn << PAGE_SHIFT);
 	kclist_add(&kcore_vmalloc, (void *)VMALLOC_START,
-		   VMALLOC_END-VMALLOC_START, KCORE_VMALLOC);
-	kclist_add(&kcore_kernel, &_stext, _end - _stext, KCORE_TEXT);
-	kclist_add(&kcore_modules, (void *)MODULES_VADDR, MODULES_LEN,
-			KCORE_OTHER);
+		   VMALLOC_END-VMALLOC_START);
+	kclist_add(&kcore_kernel, &_stext, _end - _stext);
+	kclist_add(&kcore_modules, (void *)MODULES_VADDR, MODULES_LEN);
 	kclist_add(&kcore_vsyscall, (void *)VSYSCALL_START,
-			 VSYSCALL_END - VSYSCALL_START, KCORE_OTHER);
+				 VSYSCALL_END - VSYSCALL_START);
 
 	printk(KERN_INFO "Memory: %luk/%luk available (%ldk kernel code, "
 			 "%ldk absent, %ldk reserved, %ldk data, %ldk init)\n",

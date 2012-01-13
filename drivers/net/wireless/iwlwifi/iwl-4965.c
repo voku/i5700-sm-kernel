@@ -2064,12 +2064,6 @@ static int iwl4965_tx_status_reply_tx(struct iwl_priv *priv,
 					   agg->frame_count, txq_id, idx);
 
 			hdr = iwl_tx_queue_get_hdr(priv, txq_id, idx);
-			if (!hdr) {
-				IWL_ERR(priv,
-					"BUG_ON idx doesn't point to valid skb"
-					" idx=%d, txq_id=%d\n", idx, txq_id);
-				return -1;
-			}
 
 			sc = le16_to_cpu(hdr->seq_ctrl);
 			if (idx != (SEQ_TO_SN(sc) & 0xff)) {
@@ -2129,7 +2123,7 @@ static void iwl4965_rx_reply_tx(struct iwl_priv *priv,
 	struct ieee80211_tx_info *info;
 	struct iwl4965_tx_resp *tx_resp = (void *)&pkt->u.raw[0];
 	u32  status = le32_to_cpu(tx_resp->u.status);
-	int tid = MAX_TID_COUNT - 1;
+	int tid = MAX_TID_COUNT;
 	int sta_id;
 	int freed;
 	u8 *qc = NULL;

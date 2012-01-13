@@ -456,7 +456,7 @@ static int proc_oom_score(struct task_struct *task, char *buffer)
 
 	do_posix_clock_monotonic_gettime(&uptime);
 	read_lock(&tasklist_lock);
-	points = badness(task->group_leader, uptime.tv_sec);
+	points = badness(task, uptime.tv_sec);
 	read_unlock(&tasklist_lock);
 	return sprintf(buffer, "%lu\n", points);
 }
@@ -467,7 +467,7 @@ struct limit_names {
 };
 
 static const struct limit_names lnames[RLIM_NLIMITS] = {
-	[RLIMIT_CPU] = {"Max cpu time", "seconds"},
+	[RLIMIT_CPU] = {"Max cpu time", "ms"},
 	[RLIMIT_FSIZE] = {"Max file size", "bytes"},
 	[RLIMIT_DATA] = {"Max data size", "bytes"},
 	[RLIMIT_STACK] = {"Max stack size", "bytes"},
@@ -1221,16 +1221,17 @@ static ssize_t proc_fault_inject_write(struct file * file,
 		count = sizeof(buffer) - 1;
 	if (copy_from_user(buffer, buf, count))
 		return -EFAULT;
-	make_it_fail = simple_strtol(strstrip(buffer), &end, 0);
-	if (*end)
-		return -EINVAL;
+	make_it_fail = simple_strtol(buffer, &end, 0);
+	if (*end == '\n')
+		end++;
 	task = get_proc_task(file->f_dentry->d_inode);
 	if (!task)
 		return -ESRCH;
 	task->make_it_fail = make_it_fail;
 	put_task_struct(task);
-
-	return count;
+	if (end - buffer == 0)
+		return -EIO;
+	return end - buffer;
 }
 
 static const struct file_operations proc_fault_inject_operations = {
@@ -2625,10 +2626,14 @@ static void proc_flush_task_mnt(struct vfsmount *mnt, pid_t pid, pid_t tgid)
 	name.len = snprintf(buf, sizeof(buf), "%d", pid);
 	dentry = d_hash_and_lookup(mnt->mnt_root, &name);
 	if (dentry) {
-		shrink_dcache_parent(dentry);
+		if (!(current->flags & PF_EXITING))
+			shrink_dcache_parent(dentry);
 		d_drop(dentry);
 		dput(dentry);
 	}
+
+	if (tgid == 0)
+		goto out;
 
 	name.name = buf;
 	name.len = snprintf(buf, sizeof(buf), "%d", tgid);
@@ -2686,16 +2691,17 @@ out:
 void proc_flush_task(struct task_struct *task)
 {
 	int i;
-	struct pid *pid, *tgid;
+	struct pid *pid, *tgid = NULL;
 	struct upid *upid;
 
 	pid = task_pid(task);
-	tgid = task_tgid(task);
+	if (thread_group_leader(task))
+		tgid = task_tgid(task);
 
 	for (i = 0; i <= pid->level; i++) {
 		upid = &pid->numbers[i];
 		proc_flush_task_mnt(upid->ns->proc_mnt, upid->nr,
-					tgid->numbers[i].nr);
+			tgid ? tgid->numbers[i].nr : 0);
 	}
 
 	upid = &pid->numbers[pid->level];

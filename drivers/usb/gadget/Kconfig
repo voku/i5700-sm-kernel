@@ -126,7 +126,7 @@ choice
 
 config USB_GADGET_AT91
 	boolean "Atmel AT91 USB Device Port"
-	depends on ARCH_AT91 && !ARCH_AT91SAM9RL && !ARCH_AT91CAP9 && !ARCH_AT91SAM9G45
+	depends on ARCH_AT91 && !ARCH_AT91SAM9RL && !ARCH_AT91CAP9
 	select USB_GADGET_SELECTED
 	help
 	   Many Atmel AT91 processors (such as the AT91RM2000) have a
@@ -145,7 +145,7 @@ config USB_AT91
 config USB_GADGET_ATMEL_USBA
 	boolean "Atmel USBA"
 	select USB_GADGET_DUALSPEED
-	depends on AVR32 || ARCH_AT91CAP9 || ARCH_AT91SAM9RL || ARCH_AT91SAM9G45
+	depends on AVR32 || ARCH_AT91CAP9 || ARCH_AT91SAM9RL
 	help
 	  USBA is the integrated high-speed USB Device controller on
 	  the AT32AP700x, some AT91SAM9 and AT91CAP9 processors from Atmel.
@@ -225,7 +225,6 @@ config USB_OTG
 config USB_GADGET_PXA25X
 	boolean "PXA 25x or IXP 4xx"
 	depends on (ARCH_PXA && PXA25x) || ARCH_IXP4XX
-	select USB_OTG_UTILS
 	help
 	   Intel's PXA 25x series XScale ARM-5TE processors include
 	   an integrated full speed USB 1.1 device controller.  The

@@ -250,7 +250,7 @@ early_param("loglevel", loglevel);
 
 /*
  * Unknown boot options get handed to init, unless they look like
- * unused parameters (modprobe will find them in /proc/cmdline).
+ * failed parameters
  */
 static int __init unknown_bootoption(char *param, char *val)
 {
@@ -271,9 +271,14 @@ static int __init unknown_bootoption(char *param, char *val)
 	if (obsolete_checksetup(param))
 		return 0;
 
-	/* Unused module parameter. */
-	if (strchr(param, '.') && (!val || strchr(param, '.') < val))
+	/*
+	 * Preemptive maintenance for "why didn't my misspelled command
+	 * line work?"
+	 */
+	if (strchr(param, '.') && (!val || strchr(param, '.') < val)) {
+		printk(KERN_ERR "Unknown boot option `%s': ignoring\n", param);
 		return 0;
+	}
 
 	if (panic_later)
 		return 0;
@@ -353,6 +358,11 @@ static inline void setup_nr_cpu_ids(void) { }
 static inline void smp_prepare_cpus(unsigned int maxcpus) { }
 
 #else
+
+#if NR_CPUS > BITS_PER_LONG
+cpumask_t cpu_mask_all __read_mostly = CPU_MASK_ALL;
+EXPORT_SYMBOL(cpu_mask_all);
+#endif
 
 /* Setup number of possible processor ids */
 int nr_cpu_ids __read_mostly = NR_CPUS;

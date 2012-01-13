@@ -48,6 +48,7 @@ static struct vfsmount *shm_mnt;
 #include <linux/backing-dev.h>
 #include <linux/shmem_fs.h>
 #include <linux/writeback.h>
+#include <linux/vfs.h>
 #include <linux/blkdev.h>
 #include <linux/security.h>
 #include <linux/swapops.h>
@@ -2286,14 +2287,17 @@ static int shmem_fill_super(struct super_block *sb,
 	int err = -ENOMEM;
 
 	/* Round up to L1_CACHE_BYTES to resist false sharing */
-	sbinfo = kzalloc(max((int)sizeof(struct shmem_sb_info),
+	sbinfo = kmalloc(max((int)sizeof(struct shmem_sb_info),
 				L1_CACHE_BYTES), GFP_KERNEL);
 	if (!sbinfo)
 		return -ENOMEM;
 
+	sbinfo->max_blocks = 0;
+	sbinfo->max_inodes = 0;
 	sbinfo->mode = S_IRWXUGO | S_ISVTX;
 	sbinfo->uid = current_fsuid();
 	sbinfo->gid = current_fsgid();
+	sbinfo->mpol = NULL;
 	sb->s_fs_info = sbinfo;
 
 #ifdef CONFIG_TMPFS

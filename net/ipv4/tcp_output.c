@@ -356,7 +356,6 @@ static inline int tcp_urg_mode(const struct tcp_sock *tp)
 #define OPTION_SACK_ADVERTISE	(1 << 0)
 #define OPTION_TS		(1 << 1)
 #define OPTION_MD5		(1 << 2)
-#define OPTION_WSCALE		(1 << 3)
 
 struct tcp_out_options {
 	u8 options;		/* bit field of OPTION_* */
@@ -421,7 +420,7 @@ static void tcp_options_write(__be32 *ptr, struct tcp_sock *tp,
 			       TCPOLEN_SACK_PERM);
 	}
 
-	if (unlikely(OPTION_WSCALE & opts->options)) {
+	if (unlikely(opts->ws)) {
 		*ptr++ = htonl((TCPOPT_NOP << 24) |
 			       (TCPOPT_WINDOW << 16) |
 			       (TCPOLEN_WINDOW << 8) |
@@ -488,8 +487,8 @@ static unsigned tcp_syn_options(struct sock *sk, struct sk_buff *skb,
 	}
 	if (likely(sysctl_tcp_window_scaling)) {
 		opts->ws = tp->rx_opt.rcv_wscale;
-		opts->options |= OPTION_WSCALE;
-		size += TCPOLEN_WSCALE_ALIGNED;
+		if (likely(opts->ws))
+			size += TCPOLEN_WSCALE_ALIGNED;
 	}
 	if (likely(sysctl_tcp_sack)) {
 		opts->options |= OPTION_SACK_ADVERTISE;
@@ -530,8 +529,8 @@ static unsigned tcp_synack_options(struct sock *sk,
 
 	if (likely(ireq->wscale_ok)) {
 		opts->ws = ireq->rcv_wscale;
-		opts->options |= OPTION_WSCALE;
-		size += TCPOLEN_WSCALE_ALIGNED;
+		if (likely(opts->ws))
+			size += TCPOLEN_WSCALE_ALIGNED;
 	}
 	if (likely(doing_ts)) {
 		opts->options |= OPTION_TS;

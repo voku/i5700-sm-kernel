@@ -2298,6 +2298,7 @@ struct ring_info {
 
 struct tx_ring_info {
 	struct sk_buff			*skb;
+	u32				prev_vlan_tag;
 };
 
 struct tg3_config_info {

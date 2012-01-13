@@ -56,7 +56,9 @@ config IOMMU_HELPER
        bool
 
 config GENERIC_LOCKBREAK
-	def_bool n
+	bool
+	default y
+	depends on SMP && PREEMPT
 
 config RWSEM_XCHGADD_ALGORITHM
 	bool

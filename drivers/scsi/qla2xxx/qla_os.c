@@ -1966,12 +1966,12 @@ qla2x00_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	DEBUG2(printk("DEBUG: detect hba %ld at address = %p\n",
 	    base_vha->host_no, ha));
 
+	base_vha->flags.init_done = 1;
+	base_vha->flags.online = 1;
+
 	ret = scsi_add_host(host, &pdev->dev);
 	if (ret)
 		goto probe_failed;
-
-	base_vha->flags.init_done = 1;
-	base_vha->flags.online = 1;
 
 	ha->isp_ops->enable_intrs(ha);
 

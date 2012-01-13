@@ -1399,7 +1399,7 @@ int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
 		return -EAGAIN;
 }
 
-static const struct lock_manager_operations nfsd_lease_mng_ops = {
+static struct lock_manager_operations nfsd_lease_mng_ops = {
 	.fl_break = nfsd_break_deleg_cb,
 	.fl_release_private = nfsd_release_deleg_cb,
 	.fl_copy_lock = nfsd_copy_lock_deleg_cb,
@@ -2518,7 +2518,7 @@ nfs4_transform_lock_offset(struct file_lock *lock)
 
 /* Hack!: For now, we're defining this just so we can use a pointer to it
  * as a unique cookie to identify our (NFSv4's) posix locks. */
-static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+static struct lock_manager_operations nfsd_posix_mng_ops  = {
 };
 
 static inline void

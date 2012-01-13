@@ -433,7 +433,7 @@ static int lease_mylease_callback(struct file_lock *fl, struct file_lock *try)
 	return fl->fl_file == try->fl_file;
 }
 
-static const struct lock_manager_operations lease_manager_ops = {
+static struct lock_manager_operations lease_manager_ops = {
 	.fl_break = lease_break_callback,
 	.fl_release_private = lease_release_private_callback,
 	.fl_mylease = lease_mylease_callback,

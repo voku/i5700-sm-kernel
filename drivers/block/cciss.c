@@ -35,7 +35,6 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/init.h>
-#include <linux/jiffies.h>
 #include <linux/hdreg.h>
 #include <linux/spinlock.h>
 #include <linux/compat.h>
@@ -65,12 +64,6 @@ MODULE_SUPPORTED_DEVICE("HP SA5i SA5i+ SA532 SA5300 SA5312 SA641 SA642 SA6400"
 			" Smart Array G2 Series SAS/SATA Controllers");
 MODULE_VERSION("3.6.20");
 MODULE_LICENSE("GPL");
-
-static int cciss_allow_hpsa;
-module_param(cciss_allow_hpsa, int, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(cciss_allow_hpsa,
-	"Prevent cciss driver from accessing hardware known to be "
-	" supported by the hpsa driver");
 
 #include "cciss_cmd.h"
 #include "cciss.h"
@@ -105,6 +98,8 @@ static const struct pci_device_id cciss_pci_device_id[] = {
 	{PCI_VENDOR_ID_HP,     PCI_DEVICE_ID_HP_CISSE,     0x103C, 0x3249},
 	{PCI_VENDOR_ID_HP,     PCI_DEVICE_ID_HP_CISSE,     0x103C, 0x324A},
 	{PCI_VENDOR_ID_HP,     PCI_DEVICE_ID_HP_CISSE,     0x103C, 0x324B},
+	{PCI_VENDOR_ID_HP,     PCI_ANY_ID,	PCI_ANY_ID, PCI_ANY_ID,
+		PCI_CLASS_STORAGE_RAID << 8, 0xffff << 8, 0},
 	{0,}
 };
 
@@ -125,6 +120,8 @@ static struct board_type products[] = {
 	{0x409D0E11, "Smart Array 6400 EM", &SA5_access},
 	{0x40910E11, "Smart Array 6i", &SA5_access},
 	{0x3225103C, "Smart Array P600", &SA5_access},
+	{0x3223103C, "Smart Array P800", &SA5_access},
+	{0x3234103C, "Smart Array P400", &SA5_access},
 	{0x3235103C, "Smart Array P400i", &SA5_access},
 	{0x3211103C, "Smart Array E200i", &SA5_access},
 	{0x3212103C, "Smart Array E200", &SA5_access},
@@ -132,10 +129,6 @@ static struct board_type products[] = {
 	{0x3214103C, "Smart Array E200i", &SA5_access},
 	{0x3215103C, "Smart Array E200i", &SA5_access},
 	{0x3237103C, "Smart Array E500", &SA5_access},
-/* controllers below this line are also supported by the hpsa driver. */
-#define HPSA_BOUNDARY 0x3223103C
-	{0x3223103C, "Smart Array P800", &SA5_access},
-	{0x3234103C, "Smart Array P400", &SA5_access},
 	{0x323D103C, "Smart Array P700m", &SA5_access},
 	{0x3241103C, "Smart Array P212", &SA5_access},
 	{0x3243103C, "Smart Array P410", &SA5_access},
@@ -144,6 +137,7 @@ static struct board_type products[] = {
 	{0x3249103C, "Smart Array P812", &SA5_access},
 	{0x324A103C, "Smart Array P712m", &SA5_access},
 	{0x324B103C, "Smart Array P711m", &SA5_access},
+	{0xFFFF103C, "Unknown Smart Array", &SA5_access},
 };
 
 /* How long to wait (in milliseconds) for board to go into simple mode */
@@ -236,10 +230,7 @@ static inline void removeQ(CommandList_struct *c)
 
 #include "cciss_scsi.c"		/* For SCSI tape support */
 
-static const char *raid_label[] = { "0", "4", "1(1+0)", "5", "5+1", "ADG",
-	"UNKNOWN"
-};
-#define RAID_UNKNOWN (sizeof(raid_label) / sizeof(raid_label[0])-1)
+#define RAID_UNKNOWN 6
 
 #ifdef CONFIG_PROC_FS
 
@@ -249,6 +240,9 @@ static const char *raid_label[] = { "0", "4", "1(1+0)", "5", "5+1", "ADG",
 #define ENG_GIG 1000000000
 #define ENG_GIG_FACTOR (ENG_GIG/512)
 #define ENGAGE_SCSI	"engage scsi"
+static const char *raid_label[] = { "0", "4", "1(1+0)", "5", "5+1", "ADG",
+	"UNKNOWN"
+};
 
 static struct proc_dir_entry *proc_cciss;
 
@@ -314,9 +308,6 @@ static int cciss_seq_show(struct seq_file *seq, void *v)
 	if (*pos > h->highest_lun)
 		return 0;
 
-	if (drv == NULL) /* it's possible for h->drv[] to have holes. */
-		return 0;
-
 	if (drv->heads == 0)
 		return 0;
 
@@ -325,7 +316,7 @@ static int cciss_seq_show(struct seq_file *seq, void *v)
 	vol_sz_frac *= 100;
 	sector_div(vol_sz_frac, ENG_GIG_FACTOR);
 
-	if (drv->raid_level < 0 || drv->raid_level > RAID_UNKNOWN)
+	if (drv->raid_level > 5)
 		drv->raid_level = RAID_UNKNOWN;
 	seq_printf(seq, "cciss/c%dd%d:"
 			"\t%4u.%02uGB\tRAID %s\n",
@@ -557,7 +548,7 @@ static int cciss_open(struct block_device *bdev, fmode_t mode)
 	printk(KERN_DEBUG "cciss_open %s\n", bdev->bd_disk->disk_name);
 #endif				/* CCISS_DEBUG */
 
-	if (drv->busy_configuring)
+	if (host->busy_initializing || drv->busy_configuring)
 		return -EBUSY;
 	/*
 	 * Root is allowed to open raw volume zero even if it's not configured
@@ -1414,12 +1405,20 @@ static void cciss_update_drive_info(int ctlr, int drv_index, int first_time)
 	unsigned long flags = 0;
 	int ret = 0;
 	drive_info_struct *drvinfo;
+	int was_only_controller_node;
 
 	/* Get information about the disk and modify the driver structure */
 	inq_buff = kmalloc(sizeof(InquiryData_struct), GFP_KERNEL);
 	drvinfo = kmalloc(sizeof(*drvinfo), GFP_KERNEL);
 	if (inq_buff == NULL || drvinfo == NULL)
 		goto mem_msg;
+
+	/* See if we're trying to update the "controller node"
+	 * this will happen the when the first logical drive gets
+	 * created by ACU.
+	 */
+	was_only_controller_node = (drv_index == 0 &&
+				h->drv[0].raid_level == -1);
 
 	/* testing to see if 16-byte CDBs are already being used */
 	if (h->cciss_read == CCISS_READ_16) {
@@ -2175,6 +2174,8 @@ static void cciss_geometry_inquiry(int ctlr, int logvol,
 	} else {		/* Get geometry failed */
 		printk(KERN_WARNING "cciss: reading geometry failed\n");
 	}
+	printk(KERN_INFO "      heads=%d, sectors=%d, cylinders=%d\n\n",
+	       drv->heads, drv->sectors, drv->cylinders);
 }
 
 static void
@@ -2206,6 +2207,9 @@ cciss_read_capacity(int ctlr, int logvol, int withirq, sector_t *total_size,
 		*total_size = 0;
 		*block_size = BLOCK_SIZE;
 	}
+	if (*total_size != 0)
+		printk(KERN_INFO "      blocks= %llu block_size= %d\n",
+		(unsigned long long)*total_size+1, *block_size);
 	kfree(buf);
 }
 
@@ -3137,27 +3141,7 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 	__u64 cfg_offset;
 	__u32 cfg_base_addr;
 	__u64 cfg_base_addr_index;
-	int i, prod_index, err;
-
-	subsystem_vendor_id = pdev->subsystem_vendor;
-	subsystem_device_id = pdev->subsystem_device;
-	board_id = (((__u32) (subsystem_device_id << 16) & 0xffff0000) |
-		    subsystem_vendor_id);
-
-	for (i = 0; i < ARRAY_SIZE(products); i++) {
-		/* Stand aside for hpsa driver on request */
-		if (cciss_allow_hpsa && products[i].board_id == HPSA_BOUNDARY)
-			return -ENODEV;
-		if (board_id == products[i].board_id)
-			break;
-	}
-	prod_index = i;
-	if (prod_index == ARRAY_SIZE(products)) {
-		dev_warn(&pdev->dev,
-			"unrecognized board ID: 0x%08lx, ignoring.\n",
-			(unsigned long) board_id);
-		return -ENODEV;
-	}
+	int i, err;
 
 	/* check to see if controller has been disabled */
 	/* BEFORE trying to enable it */
@@ -3180,6 +3164,11 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 		       "aborting\n");
 		return err;
 	}
+
+	subsystem_vendor_id = pdev->subsystem_vendor;
+	subsystem_device_id = pdev->subsystem_device;
+	board_id = (((__u32) (subsystem_device_id << 16) & 0xffff0000) |
+		    subsystem_vendor_id);
 
 #ifdef CCISS_DEBUG
 	printk("command = %x\n", command);
@@ -3210,7 +3199,7 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 		if (scratchpad == CCISS_FIRMWARE_READY)
 			break;
 		set_current_state(TASK_INTERRUPTIBLE);
-		schedule_timeout(msecs_to_jiffies(100));	/* wait 100ms */
+		schedule_timeout(HZ / 10);	/* wait 100ms */
 	}
 	if (scratchpad != CCISS_FIRMWARE_READY) {
 		printk(KERN_WARNING "cciss: Board not ready.  Timed out.\n");
@@ -3257,9 +3246,14 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 	 * leave a little room for ioctl calls.
 	 */
 	c->max_commands = readl(&(c->cfgtable->CmdsOutMax));
-	c->product_name = products[prod_index].product_name;
-	c->access = *(products[prod_index].access);
-	c->nr_cmds = c->max_commands - 4;
+	for (i = 0; i < ARRAY_SIZE(products); i++) {
+		if (board_id == products[i].board_id) {
+			c->product_name = products[i].product_name;
+			c->access = *(products[i].access);
+			c->nr_cmds = c->max_commands - 4;
+			break;
+		}
+	}
 	if ((readb(&c->cfgtable->Signature[0]) != 'C') ||
 	    (readb(&c->cfgtable->Signature[1]) != 'I') ||
 	    (readb(&c->cfgtable->Signature[2]) != 'S') ||
@@ -3267,6 +3261,27 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 		printk("Does not appear to be a valid CISS config table\n");
 		err = -ENODEV;
 		goto err_out_free_res;
+	}
+	/* We didn't find the controller in our list. We know the
+	 * signature is valid. If it's an HP device let's try to
+	 * bind to the device and fire it up. Otherwise we bail.
+	 */
+	if (i == ARRAY_SIZE(products)) {
+		if (subsystem_vendor_id == PCI_VENDOR_ID_HP) {
+			c->product_name = products[i-1].product_name;
+			c->access = *(products[i-1].access);
+			c->nr_cmds = c->max_commands - 4;
+			printk(KERN_WARNING "cciss: This is an unknown "
+				"Smart Array controller.\n"
+				"cciss: Please update to the latest driver "
+				"available from www.hp.com.\n");
+		} else {
+			printk(KERN_WARNING "cciss: Sorry, I don't know how"
+				" to access the Smart Array controller %08lx\n"
+					, (unsigned long)board_id);
+			err = -ENODEV;
+			goto err_out_free_res;
+		}
 	}
 #ifdef CONFIG_X86
 	{
@@ -3310,7 +3325,7 @@ static int __devinit cciss_pci_init(ctlr_info_t *c, struct pci_dev *pdev)
 			break;
 		/* delay and try again */
 		set_current_state(TASK_INTERRUPTIBLE);
-		schedule_timeout(msecs_to_jiffies(1));
+		schedule_timeout(10);
 	}
 
 #ifdef CCISS_DEBUG
@@ -3364,16 +3379,15 @@ Enomem:
 	return -1;
 }
 
-static void free_hba(int n)
+static void free_hba(int i)
 {
-	ctlr_info_t *h = hba[n];
-	int i;
+	ctlr_info_t *p = hba[i];
+	int n;
 
-	hba[n] = NULL;
-	for (i = 0; i < h->highest_lun + 1; i++)
-		if (h->gendisk[i] != NULL)
-			put_disk(h->gendisk[i]);
-	kfree(h);
+	hba[i] = NULL;
+	for (n = 0; n < CISS_MAX_LUN; n++)
+		put_disk(p->gendisk[n]);
+	kfree(p);
 }
 
 /* Send a message CDB to the firmware. */

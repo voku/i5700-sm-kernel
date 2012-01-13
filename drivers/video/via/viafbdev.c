@@ -101,16 +101,20 @@ static const struct viafb_modeinfo viafb_modentry[] = {
 
 static struct fb_ops viafb_ops;
 
-
-static void viafb_update_fix(struct fb_info *info)
+static int viafb_update_fix(struct fb_fix_screeninfo *fix, struct fb_info *info)
 {
-	u32 bpp = info->var.bits_per_pixel;
+	struct viafb_par *ppar;
+	ppar = info->par;
 
-	info->fix.visual =
-		bpp == 8 ? FB_VISUAL_PSEUDOCOLOR : FB_VISUAL_TRUECOLOR;
-	info->fix.line_length =
-		((info->var.xres_virtual + 7) & ~7) * bpp / 8;
+	DEBUG_MSG(KERN_INFO "viafb_update_fix!\n");
+
+	fix->visual =
+	    ppar->bpp == 8 ? FB_VISUAL_PSEUDOCOLOR : FB_VISUAL_TRUECOLOR;
+	fix->line_length = ppar->linelength;
+
+	return 0;
 }
+
 
 static void viafb_setup_fixinfo(struct fb_fix_screeninfo *fix,
 	struct viafb_par *viaparinfo)
@@ -120,6 +124,8 @@ static void viafb_setup_fixinfo(struct fb_fix_screeninfo *fix,
 
 	fix->smem_start = viaparinfo->fbmem;
 	fix->smem_len = viaparinfo->fbmem_free;
+	fix->mmio_start = viaparinfo->mmio_base;
+	fix->mmio_len = viaparinfo->mmio_len;
 
 	fix->type = FB_TYPE_PACKED_PIXELS;
 	fix->type_aux = 0;
@@ -140,6 +146,19 @@ static int viafb_release(struct fb_info *info, int user)
 {
 	DEBUG_MSG(KERN_INFO "viafb_release!\n");
 	return 0;
+}
+
+static void viafb_update_viafb_par(struct fb_info *info)
+{
+	struct viafb_par *ppar;
+
+	ppar = info->par;
+	ppar->bpp = info->var.bits_per_pixel;
+	ppar->linelength = ((info->var.xres_virtual + 7) & ~7) * ppar->bpp / 8;
+	ppar->hres = info->var.xres;
+	ppar->vres = info->var.yres;
+	ppar->xoffset = info->var.xoffset;
+	ppar->yoffset = info->var.yoffset;
 }
 
 static int viafb_check_var(struct fb_var_screeninfo *var,
@@ -237,7 +256,12 @@ static int viafb_set_par(struct fb_info *info)
 		/*We should set memory offset according virtual_x */
 		/*Fix me:put this function into viafb_setmode */
 		viafb_memory_pitch_patch(info);
-		viafb_update_fix(info);
+
+		/* Update ***fb_par information */
+		viafb_update_viafb_par(info);
+
+		/* Update other fixed information */
+		viafb_update_fix(&info->fix, info);
 		viafb_bpp = info->var.bits_per_pixel;
 		/* Update viafb_accel, it is necessary to our 2D accelerate */
 		viafb_accel = info->var.accel_flags;
@@ -480,7 +504,12 @@ static int viafb_pan_display(struct fb_var_screeninfo *var,
 	    var->bits_per_pixel / 16;
 
 	DEBUG_MSG(KERN_INFO "\nviafb_pan_display,offset =%d ", offset);
-	viafb_set_primary_address(offset);
+
+	viafb_write_reg_mask(0x48, 0x3d4, ((offset >> 24) & 0x3), 0x3);
+	viafb_write_reg_mask(0x34, 0x3d4, ((offset >> 16) & 0xff), 0xff);
+	viafb_write_reg_mask(0x0c, 0x3d4, ((offset >> 8) & 0xff), 0xff);
+	viafb_write_reg_mask(0x0d, 0x3d4, (offset & 0xff), 0xff);
+
 	return 0;
 }
 
@@ -1053,8 +1082,7 @@ static int viafb_cursor(struct fb_info *info, struct fb_cursor *cursor)
 		return -ENODEV;
 
 	/* When duoview and using lcd , use soft cursor */
-	if (viafb_LCD_ON || (!viafb_SAMM_ON &&
-		viafb_LCD2_ON + viafb_DVI_ON + viafb_CRT_ON == 2))
+	if (viafb_LCD_ON || ((struct viafb_par *)(info->par))->duoview)
 		return -ENODEV;
 
 	viafb_show_hw_cursor(info, HW_Cursor_OFF);
@@ -1354,8 +1382,7 @@ static void viafb_set_device(struct device_t active_dev)
 		viafb_SAMM_ON = active_dev.samm;
 	viafb_primary_dev = active_dev.primary_dev;
 
-	viafb_set_primary_address(0);
-	viafb_set_secondary_address(viafb_SAMM_ON ? viafb_second_offset : 0);
+	viafb_set_start_addr();
 	viafb_set_iga_path();
 }
 
@@ -1424,6 +1451,18 @@ static int get_primary_device(void)
 		}
 	}
 	return primary_device;
+}
+
+static u8 is_duoview(void)
+{
+	if (0 == viafb_SAMM_ON) {
+		if (viafb_LCD_ON + viafb_LCD2_ON +
+			viafb_DVI_ON + viafb_CRT_ON == 2)
+			return true;
+		return false;
+	} else {
+		return false;
+	}
 }
 
 static void apply_second_mode_setting(struct fb_var_screeninfo
@@ -1527,12 +1566,13 @@ static int apply_device_setting(struct viafb_ioctl_setting setting_info,
 			if (viafb_SAMM_ON)
 				viafb_primary_dev = setting_info.primary_device;
 
-			viafb_set_primary_address(0);
-			viafb_set_secondary_address(viafb_SAMM_ON ? viafb_second_offset : 0);
+			viafb_set_start_addr();
 			viafb_set_iga_path();
 		}
 		need_set_mode = 1;
 	}
+
+	viaparinfo->duoview = is_duoview();
 
 	if (!need_set_mode) {
 		;
@@ -1654,6 +1694,7 @@ static void parse_active_dev(void)
 		viafb_CRT_ON = STATE_ON;
 		viafb_SAMM_ON = STATE_OFF;
 	}
+	viaparinfo->duoview = is_duoview();
 }
 
 static void parse_video_dev(void)
@@ -2130,17 +2171,12 @@ static int __devinit via_pci_probe(void)
 
 	if (!viaparinfo->fbmem_virt) {
 		printk(KERN_INFO "ioremap failed\n");
-		return -ENOMEM;
+		return -1;
 	}
 
-	viafb_get_mmio_info(&viafbinfo->fix.mmio_start,
-		&viafbinfo->fix.mmio_len);
-	viaparinfo->io_virt = ioremap_nocache(viafbinfo->fix.mmio_start,
-		viafbinfo->fix.mmio_len);
-	if (!viaparinfo->io_virt) {
-		printk(KERN_WARNING "ioremap failed: hardware acceleration disabled\n");
-		viafb_accel = 0;
-	}
+	viafb_get_mmio_info(&viaparinfo->mmio_base, &viaparinfo->mmio_len);
+	viaparinfo->io_virt = ioremap_nocache(viaparinfo->mmio_base,
+		viaparinfo->mmio_len);
 
 	viafbinfo->node = 0;
 	viafbinfo->fbops = &viafb_ops;
@@ -2273,8 +2309,6 @@ static int __devinit via_pci_probe(void)
 				viafb_second_offset;
 		}
 
-		viaparinfo->iga_path = IGA1;
-		viaparinfo1->iga_path = IGA2;
 		memcpy(viafbinfo1, viafbinfo, sizeof(struct fb_info));
 		viafbinfo1->screen_base = viafbinfo->screen_base +
 			viafb_second_offset;
@@ -2301,13 +2335,15 @@ static int __devinit via_pci_probe(void)
 		viafb_setup_fixinfo(&viafbinfo1->fix, viaparinfo1);
 		viafb_check_var(&default_var, viafbinfo1);
 		viafbinfo1->var = default_var;
-		viafb_update_fix(viafbinfo1);
+		viafb_update_viafb_par(viafbinfo);
+		viafb_update_fix(&viafbinfo1->fix, viafbinfo1);
 	}
 
 	viafb_setup_fixinfo(&viafbinfo->fix, viaparinfo);
 	viafb_check_var(&default_var, viafbinfo);
 	viafbinfo->var = default_var;
-	viafb_update_fix(viafbinfo);
+	viafb_update_viafb_par(viafbinfo);
+	viafb_update_fix(&viafbinfo->fix, viafbinfo);
 	default_var.activate = FB_ACTIVATE_NOW;
 	fb_alloc_cmap(&viafbinfo->cmap, 256, 0);
 

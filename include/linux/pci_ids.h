@@ -766,7 +766,6 @@
 #define PCI_DEVICE_ID_TI_X515		0x8036
 #define PCI_DEVICE_ID_TI_XX12		0x8039
 #define PCI_DEVICE_ID_TI_XX12_FM	0x803b
-#define PCI_DEVICE_ID_TI_XIO2000A	0x8231
 #define PCI_DEVICE_ID_TI_1130		0xac12
 #define PCI_DEVICE_ID_TI_1031		0xac13
 #define PCI_DEVICE_ID_TI_1131		0xac15
@@ -1933,8 +1932,6 @@
 #define PCI_DEVICE_ID_LAVA_DSERIAL	0x0100 /* 2x 16550 */
 #define PCI_DEVICE_ID_LAVA_QUATRO_A	0x0101 /* 2x 16550, half of 4 port */
 #define PCI_DEVICE_ID_LAVA_QUATRO_B	0x0102 /* 2x 16550, half of 4 port */
-#define PCI_DEVICE_ID_LAVA_QUATTRO_A	0x0120 /* 2x 16550A, half of 4 port */
-#define PCI_DEVICE_ID_LAVA_QUATTRO_B	0x0121 /* 2x 16550A, half of 4 port */
 #define PCI_DEVICE_ID_LAVA_OCTO_A	0x0180 /* 4x 16550A, half of 8 port */
 #define PCI_DEVICE_ID_LAVA_OCTO_B	0x0181 /* 4x 16550A, half of 8 port */
 #define PCI_DEVICE_ID_LAVA_PORT_PLUS	0x0200 /* 2x 16650 */

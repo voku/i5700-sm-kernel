@@ -30,6 +30,7 @@
 #include <linux/timer.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
+#include <linux/reboot.h>
 #include <linux/usb.h>
 #include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
@@ -210,12 +211,6 @@ static int ehci_reset (struct ehci_hcd *ehci)
 	retval = handshake (ehci, &ehci->regs->command,
 			    CMD_RESET, 0, 250 * 1000);
 
-	if (ehci->has_hostpc) {
-		ehci_writel(ehci, USBMODE_EX_HC | USBMODE_EX_VBPS,
-			(u32 __iomem *)(((u8 *)ehci->regs) + USBMODE_EX));
-		ehci_writel(ehci, TXFIFO_DEFAULT,
-			(u32 __iomem *)(((u8 *)ehci->regs) + TXFILLTUNING));
-	}
 	if (retval)
 		return retval;
 
@@ -731,10 +726,9 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 
 			/* start 20 msec resume signaling from this port,
 			 * and make khubd collect PORT_STAT_C_SUSPEND to
-			 * stop that signaling.  Use 5 ms extra for safety,
-			 * like usb_port_resume() does.
+			 * stop that signaling.
 			 */
-			ehci->reset_done[i] = jiffies + msecs_to_jiffies(25);
+			ehci->reset_done [i] = jiffies + msecs_to_jiffies (20);
 			ehci_dbg (ehci, "port %d remote wakeup\n", i + 1);
 			mod_timer(&hcd->rh_timer, ehci->reset_done[i]);
 		}
@@ -1040,16 +1034,6 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_ARCH_IXP4XX
 #include "ehci-ixp4xx.c"
 #define	PLATFORM_DRIVER		ixp4xx_ehci_driver
-#endif
-
-#ifdef CONFIG_USB_W90X900_EHCI
-#include "ehci-w90x900.c"
-#define	PLATFORM_DRIVER		ehci_hcd_w90x900_driver
-#endif
-
-#ifdef CONFIG_ARCH_AT91
-#include "ehci-atmel.c"
-#define	PLATFORM_DRIVER		ehci_atmel_driver
 #endif
 
 #if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER) && \

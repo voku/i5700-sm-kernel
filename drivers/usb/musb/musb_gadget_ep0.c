@@ -197,6 +197,7 @@ service_in_request(struct musb *musb, const struct usb_ctrlrequest *ctrlrequest)
 static void musb_g_ep0_giveback(struct musb *musb, struct usb_request *req)
 {
 	musb_g_giveback(&musb->endpoints[0].ep_in, req, 0);
+	musb->ep0_state = MUSB_EP0_STAGE_SETUP;
 }
 
 /*
@@ -508,8 +509,7 @@ static void ep0_txstate(struct musb *musb)
 
 	/* update the flags */
 	if (fifo_count < MUSB_MAX_END0_PACKET
-			|| (request->actual == request->length
-				&& !request->zero)) {
+			|| request->actual == request->length) {
 		musb->ep0_state = MUSB_EP0_STAGE_STATUSOUT;
 		csr |= MUSB_CSR0_P_DATAEND;
 	} else

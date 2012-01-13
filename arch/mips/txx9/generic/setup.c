@@ -84,7 +84,7 @@ int txx9_ccfg_toeon __initdata = 1;
 struct clk *clk_get(struct device *dev, const char *id)
 {
 	if (!strcmp(id, "spi-baseclk"))
-		return (struct clk *)((unsigned long)txx9_gbus_clock / 2 / 2);
+		return (struct clk *)((unsigned long)txx9_gbus_clock / 2 / 4);
 	if (!strcmp(id, "imbus_clk"))
 		return (struct clk *)((unsigned long)txx9_gbus_clock / 2);
 	return ERR_PTR(-ENOENT);
@@ -159,7 +159,7 @@ static void __init prom_init_cmdline(void)
 	int argc;
 	int *argv32;
 	int i;			/* Always ignore the "-c" at argv[0] */
-	static char builtin[CL_SIZE] __initdata;
+	char builtin[CL_SIZE];
 
 	if (fw_arg0 >= CKSEG0 || fw_arg1 < CKSEG0) {
 		/*
@@ -314,7 +314,7 @@ static inline void txx9_cache_fixup(void)
 
 static void __init preprocess_cmdline(void)
 {
-	static char cmdline[CL_SIZE] __initdata;
+	char cmdline[CL_SIZE];
 	char *s;
 
 	strcpy(cmdline, arcs_cmdline);

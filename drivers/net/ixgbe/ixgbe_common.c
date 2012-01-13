@@ -1212,7 +1212,9 @@ static void ixgbe_add_uc_addr(struct ixgbe_hw *hw, u8 *addr, u32 vmdq)
 /**
  *  ixgbe_update_uc_addr_list_generic - Updates MAC list of secondary addresses
  *  @hw: pointer to hardware structure
- *  @uc_list: the list of new addresses
+ *  @addr_list: the list of new addresses
+ *  @addr_count: number of addresses
+ *  @next: iterator function to walk the address list
  *
  *  The given list replaces any existing list.  Clears the secondary addrs from
  *  receive address registers.  Uses unused receive address registers for the

@@ -128,7 +128,7 @@ asmlinkage __cpuinit void start_secondary(void)
 	cpu_idle();
 }
 
-void arch_send_call_function_ipi_mask(const struct cpumask *mask)
+void arch_send_call_function_ipi(cpumask_t mask)
 {
 	mp_ops->send_ipi_mask(mask, SMP_CALL_FUNCTION);
 }
@@ -138,7 +138,7 @@ void arch_send_call_function_ipi_mask(const struct cpumask *mask)
  */
 void arch_send_call_function_single_ipi(int cpu)
 {
-	mp_ops->send_ipi_mask(&cpumask_of_cpu(cpu), SMP_CALL_FUNCTION);
+	mp_ops->send_ipi_mask(cpumask_of_cpu(cpu), SMP_CALL_FUNCTION);
 }
 
 /*
@@ -183,15 +183,15 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 	mp_ops->prepare_cpus(max_cpus);
 	set_cpu_sibling_map(0);
 #ifndef CONFIG_HOTPLUG_CPU
-	init_cpu_present(&cpu_possible_map);
+	cpu_present_map = cpu_possible_map;
 #endif
 }
 
 /* preload SMP state for boot cpu */
 void __devinit smp_prepare_boot_cpu(void)
 {
-	set_cpu_possible(0, true);
-	set_cpu_online(0, true);
+	cpu_set(0, cpu_possible_map);
+	cpu_set(0, cpu_online_map);
 	cpu_set(0, cpu_callin_map);
 }
 

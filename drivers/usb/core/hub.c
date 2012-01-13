@@ -160,10 +160,8 @@ static inline char *portspeed(int portstatus)
 }
 
 /* Note that hdev or one of its children must be locked! */
-static struct usb_hub *hdev_to_hub(struct usb_device *hdev)
+static inline struct usb_hub *hdev_to_hub(struct usb_device *hdev)
 {
-	if (!hdev || !hdev->actconfig)
-		return NULL;
 	return usb_get_intfdata(hdev->actconfig->interface[0]);
 }
 
@@ -372,7 +370,7 @@ static void kick_khubd(struct usb_hub *hub)
 	unsigned long	flags;
 
 	/* Suppress autosuspend until khubd runs */
-	atomic_set(&to_usb_interface(hub->intfdev)->pm_usage_cnt, 1);
+	to_usb_interface(hub->intfdev)->pm_usage_cnt = 1;
 
 	spin_lock_irqsave(&hub_event_lock, flags);
 	if (!hub->disconnected && list_empty(&hub->event_list)) {
@@ -384,10 +382,8 @@ static void kick_khubd(struct usb_hub *hub)
 
 void usb_kick_khubd(struct usb_device *hdev)
 {
-	struct usb_hub *hub = hdev_to_hub(hdev);
-
-	if (hub)
-		kick_khubd(hub);
+	/* FIXME: What if hdev isn't bound to the hub driver? */
+	kick_khubd(hdev_to_hub(hdev));
 }
 
 
@@ -667,8 +663,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 					msecs_to_jiffies(delay));
 
 			/* Suppress autosuspend until init is done */
-			atomic_set(&to_usb_interface(hub->intfdev)->
-					pm_usage_cnt, 1);
+			to_usb_interface(hub->intfdev)->pm_usage_cnt = 1;
 			return;		/* Continues at init2: below */
 		} else {
 			hub_power_on(hub, true);
@@ -2785,7 +2780,14 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 			/* For a suspended device, treat this as a
 			 * remote wakeup event.
 			 */
-			status = remote_wakeup(udev);
+			if (udev->do_remote_wakeup)
+				status = remote_wakeup(udev);
+
+			/* Otherwise leave it be; devices can't tell the
+			 * difference between suspended and disabled.
+			 */
+			else
+				status = 0;
 #endif
 
 		} else {
@@ -3095,9 +3097,6 @@ static void hub_events(void)
 					USB_PORT_FEAT_C_SUSPEND);
 				udev = hdev->children[i-1];
 				if (udev) {
-					/* TRSMRCY = 10 msec */
-					msleep(10);
-
 					usb_lock_device(udev);
 					ret = remote_wakeup(hdev->
 							children[i-1]);

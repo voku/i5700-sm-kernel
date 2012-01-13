@@ -3556,7 +3556,7 @@ static void e1000_watchdog_task(struct work_struct *work)
 			case SPEED_100:
 				txb2b = 0;
 				netdev->tx_queue_len = 100;
-				adapter->tx_timeout_factor = 10;
+				/* maybe add some timeout factor ? */
 				break;
 			}
 
@@ -4271,10 +4271,8 @@ static int e1000_change_mtu(struct net_device *netdev, int new_mtu)
 
 	while (test_and_set_bit(__E1000_RESETTING, &adapter->state))
 		msleep(1);
-	/* e1000e_down -> e1000e_reset dependent on max_frame_size & mtu */
+	/* e1000e_down has a dependency on max_frame_size */
 	adapter->max_frame_size = max_frame;
-	e_info("changing MTU from %d to %d\n", netdev->mtu, new_mtu);
-	netdev->mtu = new_mtu;
 	if (netif_running(netdev))
 		e1000e_down(adapter);
 
@@ -4303,6 +4301,9 @@ static int e1000_change_mtu(struct net_device *netdev, int new_mtu)
 	     (max_frame == ETH_FRAME_LEN + VLAN_HLEN + ETH_FCS_LEN))
 		adapter->rx_buffer_len = ETH_FRAME_LEN + VLAN_HLEN
 					 + ETH_FCS_LEN;
+
+	e_info("changing MTU from %d to %d\n", netdev->mtu, new_mtu);
+	netdev->mtu = new_mtu;
 
 	if (netif_running(netdev))
 		e1000e_up(adapter);

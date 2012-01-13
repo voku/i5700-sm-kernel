@@ -66,7 +66,7 @@ static void * r10bio_pool_alloc(gfp_t gfp_flags, void *data)
 
 	/* allocate a r10bio with room for raid_disks entries in the bios array */
 	r10_bio = kzalloc(size, gfp_flags);
-	if (!r10_bio && conf->mddev)
+	if (!r10_bio)
 		unplug_slaves(conf->mddev);
 
 	return r10_bio;
@@ -880,7 +880,7 @@ static int make_request(struct request_queue *q, struct bio * bio)
 			mirror->rdev->data_offset;
 		read_bio->bi_bdev = mirror->rdev->bdev;
 		read_bio->bi_end_io = raid10_end_read_request;
-		read_bio->bi_rw = READ | (do_sync << BIO_RW_SYNCIO);
+		read_bio->bi_rw = READ | do_sync;
 		read_bio->bi_private = r10_bio;
 
 		generic_make_request(read_bio);
@@ -948,7 +948,7 @@ static int make_request(struct request_queue *q, struct bio * bio)
 			conf->mirrors[d].rdev->data_offset;
 		mbio->bi_bdev = conf->mirrors[d].rdev->bdev;
 		mbio->bi_end_io	= raid10_end_write_request;
-		mbio->bi_rw = WRITE | (do_sync << BIO_RW_SYNCIO);
+		mbio->bi_rw = WRITE | do_sync;
 		mbio->bi_private = r10_bio;
 
 		atomic_inc(&r10_bio->remaining);
@@ -1618,14 +1618,13 @@ static void raid10d(mddev_t *mddev)
 				bio->bi_sector = r10_bio->devs[r10_bio->read_slot].addr
 					+ rdev->data_offset;
 				bio->bi_bdev = rdev->bdev;
-				bio->bi_rw = READ | (do_sync << BIO_RW_SYNCIO);
+				bio->bi_rw = READ | do_sync;
 				bio->bi_private = r10_bio;
 				bio->bi_end_io = raid10_end_read_request;
 				unplug = 1;
 				generic_make_request(bio);
 			}
 		}
-		cond_resched();
 	}
 	if (unplug)
 		unplug_slaves(mddev);
@@ -2069,6 +2068,7 @@ static int run(mddev_t *mddev)
 	if (!conf->tmppage)
 		goto out_free_conf;
 
+	conf->mddev = mddev;
 	conf->raid_disks = mddev->raid_disks;
 	conf->near_copies = nc;
 	conf->far_copies = fc;
@@ -2105,7 +2105,6 @@ static int run(mddev_t *mddev)
 		goto out_free_conf;
 	}
 
-	conf->mddev = mddev;
 	spin_lock_init(&conf->device_lock);
 	mddev->queue->queue_lock = &conf->device_lock;
 

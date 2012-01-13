@@ -4573,7 +4573,7 @@ static int __init cy_detect_isa(void)
 			continue;
 		}
 #ifdef MODULE
-		if (isparam && i < NR_CARDS && irq[i])
+		if (isparam && irq[i])
 			cy_isa_irq = irq[i];
 		else
 #endif

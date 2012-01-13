@@ -227,7 +227,7 @@ struct atkbd {
 };
 
 /*
- * System-specific keymap fixup routine
+ * System-specific ketymap fixup routine
  */
 static void (*atkbd_platform_fixup)(struct atkbd *, const void *data);
 static void *atkbd_platform_fixup_data;
@@ -570,22 +570,11 @@ static void atkbd_event_work(struct work_struct *work)
 
 	mutex_lock(&atkbd->event_mutex);
 
-	if (!atkbd->enabled) {
-		/*
-		 * Serio ports are resumed asynchronously so while driver core
-		 * thinks that device is already fully operational in reality
-		 * it may not be ready yet. In this case we need to keep
-		 * rescheduling till reconnect completes.
-		 */
-		schedule_delayed_work(&atkbd->event_work,
-					msecs_to_jiffies(100));
-	} else {
-		if (test_and_clear_bit(ATKBD_LED_EVENT_BIT, &atkbd->event_mask))
-			atkbd_set_leds(atkbd);
+	if (test_and_clear_bit(ATKBD_LED_EVENT_BIT, &atkbd->event_mask))
+		atkbd_set_leds(atkbd);
 
-		if (test_and_clear_bit(ATKBD_REP_EVENT_BIT, &atkbd->event_mask))
-			atkbd_set_repeat_rate(atkbd);
-	}
+	if (test_and_clear_bit(ATKBD_REP_EVENT_BIT, &atkbd->event_mask))
+		atkbd_set_repeat_rate(atkbd);
 
 	mutex_unlock(&atkbd->event_mutex);
 }
@@ -775,30 +764,6 @@ static int atkbd_select_set(struct atkbd *atkbd, int target_set, int allow_extra
 	ps2_command(ps2dev, param, ATKBD_CMD_SETALL_MBR);
 
 	return 3;
-}
-
-static int atkbd_reset_state(struct atkbd *atkbd)
-{
-        struct ps2dev *ps2dev = &atkbd->ps2dev;
-	unsigned char param[1];
-
-/*
- * Set the LEDs to a predefined state (all off).
- */
-
-	param[0] = 0;
-	if (ps2_command(ps2dev, param, ATKBD_CMD_SETLEDS))
-		return -1;
-
-/*
- * Set autorepeat to fastest possible.
- */
-
-	param[0] = 0;
-	if (ps2_command(ps2dev, param, ATKBD_CMD_SETREP))
-		return -1;
-
-	return 0;
 }
 
 static int atkbd_activate(struct atkbd *atkbd)
@@ -1113,7 +1078,6 @@ static int atkbd_connect(struct serio *serio, struct serio_driver *drv)
 		}
 
 		atkbd->set = atkbd_select_set(atkbd, atkbd_set, atkbd_extra);
-		atkbd_reset_state(atkbd);
 		atkbd_activate(atkbd);
 
 	} else {
@@ -1302,7 +1266,6 @@ static ssize_t atkbd_set_extra(struct atkbd *atkbd, const char *buf, size_t coun
 
 		atkbd->dev = new_dev;
 		atkbd->set = atkbd_select_set(atkbd, atkbd->set, value);
-		atkbd_reset_state(atkbd);
 		atkbd_activate(atkbd);
 		atkbd_set_keycode_table(atkbd);
 		atkbd_set_device_attrs(atkbd);

@@ -2653,6 +2653,7 @@ static bool hotkey_notify_usrevent(const u32 hkey,
 	*ignore_acpi_ev = false;
 
 	switch (hkey) {
+	case 0x5010: /* Lenovo new BIOS: brightness changed */
 	case 0x500b: /* X61t: tablet pen inserted into bay */
 	case 0x500c: /* X61t: tablet pen removed from bay */
 		return true;
@@ -2664,10 +2665,9 @@ static bool hotkey_notify_usrevent(const u32 hkey,
 		*send_acpi_ev = false;
 		return true;
 
-	case 0x5001: /* Lid close */
-	case 0x5002: /* Lid open */
-	case 0x5010: /* brightness control */
-		/* do not propagate these events */
+	case 0x5001:
+	case 0x5002:
+		/* LID switch events.  Do not propagate */
 		*ignore_acpi_ev = true;
 		return true;
 
@@ -5630,7 +5630,7 @@ static int brightness_write(char *buf)
 	 * Doing it this way makes the syscall restartable in case of EINTR
 	 */
 	rc = brightness_set(level);
-	return (rc == -EINTR)? -ERESTARTSYS : rc;
+	return (rc == -EINTR)? ERESTARTSYS : rc;
 }
 
 static struct ibm_struct brightness_driver_data = {

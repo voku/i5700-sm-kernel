@@ -139,8 +139,7 @@ static struct futex_hash_bucket *hash_futex(union futex_key *key)
  */
 static inline int match_futex(union futex_key *key1, union futex_key *key2)
 {
-	return (key1 && key2
-		&& key1->both.word == key2->both.word
+	return (key1->both.word == key2->both.word
 		&& key1->both.ptr == key2->both.ptr
 		&& key1->both.offset == key2->both.offset);
 }
@@ -545,25 +544,8 @@ lookup_pi_state(u32 uval, struct futex_hash_bucket *hb,
 				return -EINVAL;
 
 			WARN_ON(!atomic_read(&pi_state->refcount));
-
-			/*
-			 * When pi_state->owner is NULL then the owner died
-			 * and another waiter is on the fly. pi_state->owner
-			 * is fixed up by the task which acquires
-			 * pi_state->rt_mutex.
-			 *
-			 * We do not check for pid == 0 which can happen when
-			 * the owner died and robust_list_exit() cleared the
-			 * TID.
-			 */
-			if (pid && pi_state->owner) {
-				/*
-				 * Bail out if user space manipulated the
-				 * futex value.
-				 */
-				if (pid != task_pid_vnr(pi_state->owner))
-					return -EINVAL;
-			}
+			WARN_ON(pid && pi_state->owner &&
+				pi_state->owner->pid != pid);
 
 			atomic_inc(&pi_state->refcount);
 			*ps = pi_state;
@@ -657,13 +639,6 @@ static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_q *this)
 	u32 curval, newval;
 
 	if (!pi_state)
-		return -EINVAL;
-
-	/*
-	 * If current does not own the pi_state then the futex is
-	 * inconsistent and user space fiddled with the futex value.
-	 */
-	if (pi_state->owner != current)
 		return -EINVAL;
 
 	spin_lock(&pi_state->pi_mutex.wait_lock);
@@ -1013,25 +988,6 @@ static inline struct futex_hash_bucket *queue_lock(struct futex_q *q)
 	return hb;
 }
 
-static inline void
-queue_unlock(struct futex_q *q, struct futex_hash_bucket *hb)
-{
-	spin_unlock(&hb->lock);
-	drop_futex_key_refs(&q->key);
-}
-
-/**
- * queue_me() - Enqueue the futex_q on the futex_hash_bucket
- * @q:	The futex_q to enqueue
- * @hb:	The destination hash bucket
- *
- * The hb->lock must be held by the caller, and is released here. A call to
- * queue_me() is typically paired with exactly one call to unqueue_me().  The
- * exceptions involve the PI related operations, which may use unqueue_me_pi()
- * or nothing if the unqueue is done as part of the wake process and the unqueue
- * state is implicit in the state of woken task (see futex_wait_requeue_pi() for
- * an example).
- */
 static inline void queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 {
 	int prio;
@@ -1055,17 +1011,19 @@ static inline void queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	spin_unlock(&hb->lock);
 }
 
-/**
- * unqueue_me() - Remove the futex_q from its futex_hash_bucket
- * @q:	The futex_q to unqueue
- *
- * The q->lock_ptr must not be held by the caller. A call to unqueue_me() must
- * be paired with exactly one earlier call to queue_me().
- *
- * Returns:
- *   1 - if the futex_q was still queued (and we removed unqueued it)
- *   0 - if the futex_q was already removed by the waking thread
+static inline void
+queue_unlock(struct futex_q *q, struct futex_hash_bucket *hb)
+{
+	spin_unlock(&hb->lock);
+	drop_futex_key_refs(&q->key);
+}
+
+/*
+ * queue_me and unqueue_me must be called as a pair, each
+ * exactly once.  They are called with the hashed spinlock held.
  */
+
+/* Return 1 if we were still queued (ie. 0 means we were woken) */
 static int unqueue_me(struct futex_q *q)
 {
 	spinlock_t *lock_ptr;

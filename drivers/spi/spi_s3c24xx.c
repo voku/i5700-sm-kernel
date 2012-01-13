@@ -20,10 +20,13 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/io.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
+
+#include <asm/io.h>
+#include <asm/dma.h>
+#include <mach/hardware.h>
 
 #include <plat/regs-spi.h>
 #include <mach/spi.h>
@@ -309,7 +312,7 @@ static int __init s3c24xx_spi_probe(struct platform_device *pdev)
 		goto err_no_iores;
 	}
 
-	hw->ioarea = request_mem_region(res->start, resource_size(res),
+	hw->ioarea = request_mem_region(res->start, (res->end - res->start)+1,
 					pdev->name);
 
 	if (hw->ioarea == NULL) {
@@ -318,7 +321,7 @@ static int __init s3c24xx_spi_probe(struct platform_device *pdev)
 		goto err_no_iores;
 	}
 
-	hw->regs = ioremap(res->start, resource_size(res));
+	hw->regs = ioremap(res->start, (res->end - res->start)+1);
 	if (hw->regs == NULL) {
 		dev_err(&pdev->dev, "Cannot map IO\n");
 		err = -ENXIO;
@@ -428,9 +431,9 @@ static int __exit s3c24xx_spi_remove(struct platform_device *dev)
 
 #ifdef CONFIG_PM
 
-static int s3c24xx_spi_suspend(struct device *dev)
+static int s3c24xx_spi_suspend(struct platform_device *pdev, pm_message_t msg)
 {
-	struct s3c24xx_spi *hw = platform_get_drvdata(to_platform_device(dev));
+	struct s3c24xx_spi *hw = platform_get_drvdata(pdev);
 
 	if (hw->pdata && hw->pdata->gpio_setup)
 		hw->pdata->gpio_setup(hw->pdata, 0);
@@ -439,31 +442,27 @@ static int s3c24xx_spi_suspend(struct device *dev)
 	return 0;
 }
 
-static int s3c24xx_spi_resume(struct device *dev)
+static int s3c24xx_spi_resume(struct platform_device *pdev)
 {
-	struct s3c24xx_spi *hw = platform_get_drvdata(to_platform_device(dev));
+	struct s3c24xx_spi *hw = platform_get_drvdata(pdev);
 
 	s3c24xx_spi_initialsetup(hw);
 	return 0;
 }
 
-static struct dev_pm_ops s3c24xx_spi_pmops = {
-	.suspend	= s3c24xx_spi_suspend,
-	.resume		= s3c24xx_spi_resume,
-};
-
-#define S3C24XX_SPI_PMOPS &s3c24xx_spi_pmops
 #else
-#define S3C24XX_SPI_PMOPS NULL
-#endif /* CONFIG_PM */
+#define s3c24xx_spi_suspend NULL
+#define s3c24xx_spi_resume  NULL
+#endif
 
 MODULE_ALIAS("platform:s3c2410-spi");
 static struct platform_driver s3c24xx_spi_driver = {
 	.remove		= __exit_p(s3c24xx_spi_remove),
+	.suspend	= s3c24xx_spi_suspend,
+	.resume		= s3c24xx_spi_resume,
 	.driver		= {
 		.name	= "s3c2410-spi",
 		.owner	= THIS_MODULE,
-		.pm	= S3C24XX_SPI_PMOPS,
 	},
 };
 

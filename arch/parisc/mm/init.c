@@ -445,8 +445,8 @@ void mark_rodata_ro(void)
 #define SET_MAP_OFFSET(x) ((void *)(((unsigned long)(x) + VM_MAP_OFFSET) \
 				     & ~(VM_MAP_OFFSET-1)))
 
-void *parisc_vmalloc_start __read_mostly;
-EXPORT_SYMBOL(parisc_vmalloc_start);
+void *vmalloc_start __read_mostly;
+EXPORT_SYMBOL(vmalloc_start);
 
 #ifdef CONFIG_PA11
 unsigned long pcxl_dma_start __read_mostly;
@@ -500,14 +500,13 @@ void __init mem_init(void)
 #ifdef CONFIG_PA11
 	if (hppa_dma_ops == &pcxl_dma_ops) {
 		pcxl_dma_start = (unsigned long)SET_MAP_OFFSET(MAP_START);
-		parisc_vmalloc_start = SET_MAP_OFFSET(pcxl_dma_start
-						+ PCXL_DMA_MAP_SIZE);
+		vmalloc_start = SET_MAP_OFFSET(pcxl_dma_start + PCXL_DMA_MAP_SIZE);
 	} else {
 		pcxl_dma_start = 0;
-		parisc_vmalloc_start = SET_MAP_OFFSET(MAP_START);
+		vmalloc_start = SET_MAP_OFFSET(MAP_START);
 	}
 #else
-	parisc_vmalloc_start = SET_MAP_OFFSET(MAP_START);
+	vmalloc_start = SET_MAP_OFFSET(MAP_START);
 #endif
 
 	printk(KERN_INFO "Memory: %luk/%luk available (%dk kernel code, %dk reserved, %dk data, %dk init)\n",

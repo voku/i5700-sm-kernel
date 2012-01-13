@@ -2130,7 +2130,11 @@ static int do_con_write(struct tty_struct *tty, const unsigned char *buf, int co
 	currcons = vc->vc_num;
 	if (!vc_cons_allocated(currcons)) {
 	    /* could this happen? */
-		printk_once("con_write: tty %d not allocated\n", currcons+1);
+	    static int error = 0;
+	    if (!error) {
+		error = 1;
+		printk("con_write: tty %d not allocated\n", currcons+1);
+	    }
 	    release_console_sem();
 	    return 0;
 	}

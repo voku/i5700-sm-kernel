@@ -230,19 +230,18 @@ static int config_buf(struct usb_configuration *config,
 		enum usb_device_speed speed, void *buf, u8 type)
 {
 	struct usb_config_descriptor	*c = buf;
-	struct usb_interface_descriptor *intf;
 	void				*next = buf + USB_DT_CONFIG_SIZE;
 	int				len = USB_BUFSIZ - USB_DT_CONFIG_SIZE;
 	struct usb_function		*f;
 	int				status;
 	int				interfaceCount = 0;
-	u8 *dest;
 
 	/* write the config descriptor */
 	c = buf;
 	c->bLength = USB_DT_CONFIG_SIZE;
 	c->bDescriptorType = type;
-	/* wTotalLength and bNumInterfaces are written later */
+	/* wTotalLength is written later */
+	c->bNumInterfaces = config->next_interface_id;
 	c->bConfigurationValue = config->bConfigurationValue;
 	c->iConfiguration = config->iConfiguration;
 	c->bmAttributes = USB_CONFIG_ATT_ONE | config->bmAttributes;
@@ -261,40 +260,31 @@ static int config_buf(struct usb_configuration *config,
 	/* add each function's descriptors */
 	list_for_each_entry(f, &config->functions, list) {
 		struct usb_descriptor_header **descriptors;
-		struct usb_descriptor_header *descriptor;
 
 		if (speed == USB_SPEED_HIGH)
 			descriptors = f->hs_descriptors;
 		else
 			descriptors = f->descriptors;
-		if (f->hidden || !descriptors || descriptors[0] == NULL)
+		if (f->hidden || !descriptors || descriptors[0] == NULL) {
+			for (; f != config->interface[interfaceCount];) {
+				interfaceCount++;
+				c->bNumInterfaces--;
+			}
 			continue;
+		}
+		for (; f != config->interface[interfaceCount];)
+			interfaceCount++;
+
 		status = usb_descriptor_fillbuf(next, len,
 			(const struct usb_descriptor_header **) descriptors);
 		if (status < 0)
 			return status;
-
-		/* set interface numbers dynamically */
-		dest = next;
-		while ((descriptor = *descriptors++) != NULL) {
-			intf = (struct usb_interface_descriptor *)dest;
-			if (intf->bDescriptorType == USB_DT_INTERFACE) {
-				/* don't increment bInterfaceNumber for alternate settings */
-				if (intf->bAlternateSetting == 0)
-					intf->bInterfaceNumber = interfaceCount++;
-				else
-					intf->bInterfaceNumber = interfaceCount - 1;
-			}
-			dest += intf->bLength;
-		}
-
 		len -= status;
 		next += status;
 	}
 
 	len = next - buf;
 	c->wTotalLength = cpu_to_le16(len);
-	c->bNumInterfaces = interfaceCount;
 	return len;
 }
 
@@ -620,7 +610,7 @@ static int get_string(struct usb_composite_dev *cdev,
 			}
 		}
 
-		for (len = 0; len <= 126 && s->wData[len]; len++)
+		for (len = 0; s->wData[len] && len <= 126; len++)
 			continue;
 		if (!len)
 			return -EINVAL;

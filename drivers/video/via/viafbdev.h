@@ -38,10 +38,20 @@
 #define VERSION_MINOR       4
 
 struct viafb_par {
+	int bpp;
+	int hres;
+	int vres;
+	int linelength;
+	u32 xoffset;
+	u32 yoffset;
+
 	void __iomem *fbmem_virt;	/*framebuffer virtual memory address */
 	void __iomem *io_virt;	/*iospace virtual memory address */
 	unsigned int fbmem;	/*framebuffer physical memory address */
 	unsigned int memsize;	/*size of fbmem */
+	unsigned int io;	/*io space address */
+	unsigned long mmio_base;	/*mmio base address */
+	unsigned long mmio_len;	/*mmio base length */
 	u32 fbmem_free;		/* Free FB memory */
 	u32 fbmem_used;		/* Use FB memory size */
 	u32 cursor_start;	/* Cursor Start Address */
@@ -49,6 +59,7 @@ struct viafb_par {
 	u32 VQ_end;		/* Virtual Queue End Address */
 	u32 iga_path;
 	struct proc_dir_entry *proc_entry;	/*viafb proc entry */
+	u8 duoview;		/*Is working in duoview mode? */
 
 	/* I2C stuff */
 	struct via_i2c_stuff i2c_stuff;

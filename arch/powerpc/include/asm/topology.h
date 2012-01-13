@@ -41,6 +41,11 @@ static inline int pcibus_to_node(struct pci_bus *bus)
 }
 #endif
 
+#define pcibus_to_cpumask(bus)	(pcibus_to_node(bus) == -1 ? \
+					CPU_MASK_ALL : \
+					node_to_cpumask(pcibus_to_node(bus)) \
+				)
+
 #define cpumask_of_pcibus(bus)	(pcibus_to_node(bus) == -1 ?		\
 				 cpu_all_mask :				\
 				 cpumask_of_node(pcibus_to_node(bus)))
@@ -105,6 +110,8 @@ static inline void sysfs_remove_device_from_node(struct sys_device *dev,
 #ifdef CONFIG_PPC64
 #include <asm/smp.h>
 
+#define topology_thread_siblings(cpu)	(per_cpu(cpu_sibling_map, cpu))
+#define topology_core_siblings(cpu)	(per_cpu(cpu_core_map, cpu))
 #define topology_thread_cpumask(cpu)	(&per_cpu(cpu_sibling_map, cpu))
 #define topology_core_cpumask(cpu)	(&per_cpu(cpu_core_map, cpu))
 #define topology_core_id(cpu)		(cpu_to_core_id(cpu))

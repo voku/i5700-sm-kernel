@@ -868,10 +868,10 @@ v9fs_stat2inode(struct p9_wstat *stat, struct inode *inode,
 	} else
 		inode->i_rdev = 0;
 
-	i_size_write(inode, stat->length);
+	inode->i_size = stat->length;
 
 	/* not real number of blocks, but 512 byte ones ... */
-	inode->i_blocks = (i_size_read(inode) + 512 - 1) >> 9;
+	inode->i_blocks = (inode->i_size + 512 - 1) >> 9;
 }
 
 /**
@@ -935,7 +935,8 @@ static int v9fs_readlink(struct dentry *dentry, char *buffer, int buflen)
 	P9_DPRINTK(P9_DEBUG_VFS,
 		"%s -> %s (%s)\n", dentry->d_name.name, st->extension, buffer);
 
-	retval = strnlen(buffer, buflen);
+	retval = buflen;
+
 done:
 	kfree(st);
 	return retval;
@@ -1002,7 +1003,7 @@ static void *v9fs_vfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 			__putname(link);
 			link = ERR_PTR(len);
 		} else
-			link[min(len, PATH_MAX-1)] = 0;
+			link[len] = 0;
 	}
 	nd_set_link(nd, link);
 

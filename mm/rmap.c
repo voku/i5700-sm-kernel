@@ -237,8 +237,8 @@ vma_address(struct page *page, struct vm_area_struct *vma)
 }
 
 /*
- * At what user virtual address is page expected in vma?
- * checking that the page matches the vma.
+ * At what user virtual address is page expected in vma? checking that the
+ * page matches the vma: currently only used on anon pages, by unuse_vma;
  */
 unsigned long page_address_in_vma(struct page *page, struct vm_area_struct *vma)
 {

@@ -143,7 +143,7 @@ extern int _cond_resched(void);
 #define might_sleep_if(cond) do { if (cond) might_sleep(); } while (0)
 
 #define abs(x) ({				\
-		long __x = (x);			\
+		int __x = (x);			\
 		(__x < 0) ? -__x : __x;		\
 	})
 
@@ -234,50 +234,26 @@ extern struct pid *session_of_pgrp(struct pid *pgrp);
 
 #ifdef CONFIG_PRINTK
 asmlinkage int vprintk(const char *fmt, va_list args)
-    __attribute__ ((format (printf, 1, 0)));
+	__attribute__ ((format (printf, 1, 0)));
 asmlinkage int printk(const char * fmt, ...)
-    __attribute__ ((format (printf, 1, 2))) __cold;
+	__attribute__ ((format (printf, 1, 2))) __cold;
 
 extern struct ratelimit_state printk_ratelimit_state;
 extern int printk_ratelimit(void);
 extern bool printk_timed_ratelimit(unsigned long *caller_jiffies,
-                   unsigned int interval_msec);
-
-extern int printk_delay_msec;
-
-/*
- * Print a one-time message (analogous to WARN_ONCE() et al):
- */
-#define printk_once(x...) ({            \
-    static bool __print_once = true;    \
-                        \
-    if (__print_once) {         \
-        __print_once = false;       \
-        printk(x);          \
-    }                   \
-})
-
-void log_buf_kexec_setup(void);
+				   unsigned int interval_msec);
 #else
 static inline int vprintk(const char *s, va_list args)
-    __attribute__ ((format (printf, 1, 0)));
+	__attribute__ ((format (printf, 1, 0)));
 static inline int vprintk(const char *s, va_list args) { return 0; }
 static inline int printk(const char *s, ...)
-    __attribute__ ((format (printf, 1, 2)));
+	__attribute__ ((format (printf, 1, 2)));
 static inline int __cold printk(const char *s, ...) { return 0; }
 static inline int printk_ratelimit(void) { return 0; }
 static inline bool printk_timed_ratelimit(unsigned long *caller_jiffies, \
-                      unsigned int interval_msec)   \
-        { return false; }
-
-/* No effect, but we still get type checking even in the !PRINTK case: */
-#define printk_once(x...) printk(x)
-
-static inline void log_buf_kexec_setup(void)
-{
-}
+					  unsigned int interval_msec)	\
+		{ return false; }
 #endif
-
 
 extern int printk_needs_cpu(int cpu);
 extern void printk_tick(void);
@@ -522,12 +498,6 @@ struct sysinfo;
 extern int do_sysinfo(struct sysinfo *info);
 
 #endif /* __KERNEL__ */
-
-#ifndef __EXPORTED_HEADERS__
-#ifndef __KERNEL__
-#warning Attempt to use kernel headers from user space, see http://kernelnewbies.org/KernelHeaders
-#endif /* __KERNEL__ */
-#endif /* __EXPORTED_HEADERS__ */
 
 #define SI_LOAD_SHIFT	16
 struct sysinfo {

@@ -1345,8 +1345,7 @@ static int __init imx_udc_probe(struct platform_device *pdev)
 	struct clk *clk;
 	void __iomem *base;
 	int ret = 0;
-	int i;
-	resource_size_t res_size;
+	int i, res_size;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -1360,7 +1359,7 @@ static int __init imx_udc_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	res_size = resource_size(res);
+	res_size = res->end - res->start + 1;
 	if (!request_mem_region(res->start, res_size, res->name)) {
 		dev_err(&pdev->dev, "can't allocate %d bytes at %d address\n",
 			res_size, res->start);
@@ -1466,7 +1465,8 @@ static int __exit imx_udc_remove(struct platform_device *pdev)
 	clk_disable(imx_usb->clk);
 	iounmap(imx_usb->base);
 
-	release_mem_region(imx_usb->res->start, resource_size(imx_usb->res));
+	release_mem_region(imx_usb->res->start,
+		imx_usb->res->end - imx_usb->res->start + 1);
 
 	if (pdata->exit)
 		pdata->exit(&pdev->dev);

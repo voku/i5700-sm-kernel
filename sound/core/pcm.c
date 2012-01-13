@@ -952,12 +952,11 @@ static int snd_pcm_dev_register(struct snd_device *device)
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_notify *notify;
 	char str[16];
-	struct snd_pcm *pcm;
+	struct snd_pcm *pcm = device->device_data;
 	struct device *dev;
 
-	if (snd_BUG_ON(!device || !device->device_data))
+	if (snd_BUG_ON(!pcm || !device))
 		return -ENXIO;
-	pcm = device->device_data;
 	mutex_lock(&register_mutex);
 	err = snd_pcm_add(pcm);
 	if (err) {

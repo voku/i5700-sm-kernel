@@ -259,7 +259,7 @@ static ssize_t regulator_name_show(struct device *dev,
 	struct regulator_dev *rdev = dev_get_drvdata(dev);
 	const char *name;
 
-	if (rdev->constraints && rdev->constraints->name)
+	if (rdev->constraints->name)
 		name = rdev->constraints->name;
 	else if (rdev->desc->name)
 		name = rdev->desc->name;
@@ -307,13 +307,8 @@ static ssize_t regulator_state_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct regulator_dev *rdev = dev_get_drvdata(dev);
-	ssize_t ret;
 
-	mutex_lock(&rdev->mutex);
-	ret = regulator_print_state(buf, _regulator_is_enabled(rdev));
-	mutex_unlock(&rdev->mutex);
-
-	return ret;
+	return regulator_print_state(buf, _regulator_is_enabled(rdev));
 }
 static DEVICE_ATTR(state, 0444, regulator_state_show, NULL);
 
@@ -626,7 +621,7 @@ static int suspend_prepare(struct regulator_dev *rdev, suspend_state_t state)
 static void print_constraints(struct regulator_dev *rdev)
 {
 	struct regulation_constraints *constraints = rdev->constraints;
-	char buf[80] = "";
+	char buf[80];
 	int count;
 
 	if (rdev->desc->type == REGULATOR_VOLTAGE) {
@@ -985,21 +980,16 @@ void regulator_put(struct regulator *regulator)
 }
 EXPORT_SYMBOL_GPL(regulator_put);
 
-static int _regulator_can_change_status(struct regulator_dev *rdev)
-{
-	if (!rdev->constraints)
-		return 0;
-
-	if (rdev->constraints->valid_ops_mask & REGULATOR_CHANGE_STATUS)
-		return 1;
-	else
-		return 0;
-}
-
 /* locks held by regulator_enable() */
 static int _regulator_enable(struct regulator_dev *rdev)
 {
-	int ret;
+	int ret = -EINVAL;
+
+	if (!rdev->constraints) {
+		printk(KERN_ERR "%s: %s has no constraints\n",
+		       __func__, rdev->desc->name);
+		return ret;
+	}
 
 	/* do we need to enable the supply regulator first */
 	if (rdev->supply) {
@@ -1012,35 +1002,24 @@ static int _regulator_enable(struct regulator_dev *rdev)
 	}
 
 	/* check voltage and requested load before enabling */
-	if (rdev->constraints &&
-	    (rdev->constraints->valid_ops_mask & REGULATOR_CHANGE_DRMS))
-		drms_uA_update(rdev);
+	if (rdev->desc->ops->enable) {
 
-	if (rdev->use_count == 0) {
-		/* The regulator may on if it's not switchable or left on */
-		ret = _regulator_is_enabled(rdev);
-		if (ret == -EINVAL || ret == 0) {
-			if (!_regulator_can_change_status(rdev))
-				return -EPERM;
+		if (rdev->constraints &&
+			(rdev->constraints->valid_ops_mask &
+			REGULATOR_CHANGE_DRMS))
+			drms_uA_update(rdev);
 
-			if (rdev->desc->ops->enable) {
-				ret = rdev->desc->ops->enable(rdev);
-				if (ret < 0)
-					return ret;
-			} else {
-				return -EINVAL;
-			}
-		} else if (ret < 0) {
-			printk(KERN_ERR "%s: is_enabled() failed for %s: %d\n",
+		ret = rdev->desc->ops->enable(rdev);
+		if (ret < 0) {
+			printk(KERN_ERR "%s: failed to enable %s: %d\n",
 			       __func__, rdev->desc->name, ret);
 			return ret;
 		}
-		/* Fallthrough on positive return values - already enabled */
+		rdev->use_count++;
+		return ret;
 	}
 
-	rdev->use_count++;
-
-	return 0;
+	return ret;
 }
 
 /**
@@ -1080,8 +1059,7 @@ static int _regulator_disable(struct regulator_dev *rdev)
 	if (rdev->use_count == 1 && !rdev->constraints->always_on) {
 
 		/* we are last user */
-		if (_regulator_can_change_status(rdev) &&
-		    rdev->desc->ops->disable) {
+		if (rdev->desc->ops->disable) {
 			ret = rdev->desc->ops->disable(rdev);
 			if (ret < 0) {
 				printk(KERN_ERR "%s: failed to disable %s\n",
@@ -1191,11 +1169,20 @@ EXPORT_SYMBOL_GPL(regulator_force_disable);
 
 static int _regulator_is_enabled(struct regulator_dev *rdev)
 {
-	/* sanity check */
-	if (!rdev->desc->ops->is_enabled)
-		return -EINVAL;
+	int ret;
 
-	return rdev->desc->ops->is_enabled(rdev);
+	mutex_lock(&rdev->mutex);
+
+	/* sanity check */
+	if (!rdev->desc->ops->is_enabled) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = rdev->desc->ops->is_enabled(rdev);
+out:
+	mutex_unlock(&rdev->mutex);
+	return ret;
 }
 
 /**
@@ -1212,13 +1199,7 @@ static int _regulator_is_enabled(struct regulator_dev *rdev)
  */
 int regulator_is_enabled(struct regulator *regulator)
 {
-	int ret;
-
-	mutex_lock(&regulator->rdev->mutex);
-	ret = _regulator_is_enabled(regulator->rdev);
-	mutex_unlock(&regulator->rdev->mutex);
-
-	return ret;
+	return _regulator_is_enabled(regulator->rdev);
 }
 EXPORT_SYMBOL_GPL(regulator_is_enabled);
 

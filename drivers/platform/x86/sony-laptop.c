@@ -1242,8 +1242,6 @@ static struct sony_pic_dev spic_dev = {
 	.ioports	= LIST_HEAD_INIT(spic_dev.ioports),
 };
 
-static int spic_drv_registered;
-
 /* Event masks */
 #define SONYPI_JOGGER_MASK			0x00000001
 #define SONYPI_CAPTURE_MASK			0x00000002
@@ -2625,7 +2623,7 @@ static int sony_pic_add(struct acpi_device *device)
 	/* request IRQ */
 	list_for_each_entry_reverse(irq, &spic_dev.interrupts, list) {
 		if (!request_irq(irq->irq.interrupts[0], sony_pic_irq,
-					IRQF_DISABLED, "sony-laptop", &spic_dev)) {
+					IRQF_SHARED, "sony-laptop", &spic_dev)) {
 			dprintk("IRQ: %d - triggering: %d - "
 					"polarity: %d - shr: %d\n",
 					irq->irq.interrupts[0],
@@ -2758,7 +2756,6 @@ static int __init sony_laptop_init(void)
 					"Unable to register SPIC driver.");
 			goto out;
 		}
-		spic_drv_registered = 1;
 	}
 
 	result = acpi_bus_register_driver(&sony_nc_driver);
@@ -2770,7 +2767,7 @@ static int __init sony_laptop_init(void)
 	return 0;
 
 out_unregister_pic:
-	if (spic_drv_registered)
+	if (!no_spic)
 		acpi_bus_unregister_driver(&sony_pic_driver);
 out:
 	return result;
@@ -2779,7 +2776,7 @@ out:
 static void __exit sony_laptop_exit(void)
 {
 	acpi_bus_unregister_driver(&sony_nc_driver);
-	if (spic_drv_registered)
+	if (!no_spic)
 		acpi_bus_unregister_driver(&sony_pic_driver);
 }
 

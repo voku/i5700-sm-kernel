@@ -1520,7 +1520,7 @@ int sysctl_check_table(struct nsproxy *namespaces, struct ctl_table *table)
 			if (!table->ctl_name && table->strategy)
 				set_fail(&fail, table, "Strategy without ctl_name");
 #endif
-#ifdef CONFIG_PROC_SYSCTL
+#ifdef CONFIG_PROC_FS
 			if (table->procname && !table->proc_handler)
 				set_fail(&fail, table, "No proc_handler");
 #endif

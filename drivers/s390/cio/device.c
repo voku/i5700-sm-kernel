@@ -156,7 +156,8 @@ atomic_t ccw_device_init_count;
 
 static void recovery_func(unsigned long data);
 
-int __init io_subchannel_init(void)
+static int __init
+init_ccw_bus_type (void)
 {
 	int ret;
 
@@ -166,10 +167,10 @@ int __init io_subchannel_init(void)
 
 	ccw_device_work = create_singlethread_workqueue("cio");
 	if (!ccw_device_work)
-		return -ENOMEM;
+		return -ENOMEM; /* FIXME: better errno ? */
 	slow_path_wq = create_singlethread_workqueue("kslowcrw");
 	if (!slow_path_wq) {
-		ret = -ENOMEM;
+		ret = -ENOMEM; /* FIXME: better errno ? */
 		goto out_err;
 	}
 	if ((ret = bus_register (&ccw_bus_type)))
@@ -179,6 +180,9 @@ int __init io_subchannel_init(void)
 	if (ret)
 		goto out_err;
 
+	wait_event(ccw_device_init_wq,
+		   atomic_read(&ccw_device_init_count) == 0);
+	flush_workqueue(ccw_device_work);
 	return 0;
 out_err:
 	if (ccw_device_work)
@@ -188,6 +192,16 @@ out_err:
 	return ret;
 }
 
+static void __exit
+cleanup_ccw_bus_type (void)
+{
+	css_driver_unregister(&io_subchannel_driver);
+	bus_unregister(&ccw_bus_type);
+	destroy_workqueue(ccw_device_work);
+}
+
+subsys_initcall(init_ccw_bus_type);
+module_exit(cleanup_ccw_bus_type);
 
 /************************ device handling **************************/
 

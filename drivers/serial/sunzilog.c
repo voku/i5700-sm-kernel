@@ -1416,8 +1416,7 @@ static int __devinit zs_probe(struct of_device *op, const struct of_device_id *m
 
 	if (!keyboard_mouse) {
 		if (sunserial_console_match(SUNZILOG_CONSOLE(), op->node,
-					    &sunzilog_reg, up[0].port.line,
-					    false))
+					    &sunzilog_reg, up[0].port.line))
 			up->flags |= SUNZILOG_FLAG_IS_CONS;
 		err = uart_add_one_port(&sunzilog_reg, &up[0].port);
 		if (err) {
@@ -1426,8 +1425,7 @@ static int __devinit zs_probe(struct of_device *op, const struct of_device_id *m
 			return err;
 		}
 		if (sunserial_console_match(SUNZILOG_CONSOLE(), op->node,
-					    &sunzilog_reg, up[1].port.line,
-					    false))
+					    &sunzilog_reg, up[1].port.line))
 			up->flags |= SUNZILOG_FLAG_IS_CONS;
 		err = uart_add_one_port(&sunzilog_reg, &up[1].port);
 		if (err) {

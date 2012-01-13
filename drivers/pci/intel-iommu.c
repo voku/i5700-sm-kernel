@@ -1532,15 +1532,12 @@ static int domain_context_mapping_one(struct dmar_domain *domain,
 
 		/* Skip top levels of page tables for
 		 * iommu which has less agaw than default.
-		 * Unnecessary for PT mode.
 		 */
-		if (translation != CONTEXT_TT_PASS_THROUGH) {
-			for (agaw = domain->agaw; agaw != iommu->agaw; agaw--) {
-				pgd = phys_to_virt(dma_pte_addr(pgd));
-				if (!dma_pte_present(pgd)) {
-					spin_unlock_irqrestore(&iommu->lock, flags);
-					return -ENOMEM;
-				}
+		for (agaw = domain->agaw; agaw != iommu->agaw; agaw--) {
+			pgd = phys_to_virt(dma_pte_addr(pgd));
+			if (!dma_pte_present(pgd)) {
+				spin_unlock_irqrestore(&iommu->lock, flags);
+				return -ENOMEM;
 			}
 		}
 	}
@@ -2414,15 +2411,7 @@ void *intel_alloc_coherent(struct device *hwdev, size_t size,
 
 	size = PAGE_ALIGN(size);
 	order = get_order(size);
-
-	if (!iommu_no_mapping(hwdev))
-		flags &= ~(GFP_DMA | GFP_DMA32);
-	else if (hwdev->coherent_dma_mask < dma_get_required_mask(hwdev)) {
-		if (hwdev->coherent_dma_mask < DMA_BIT_MASK(32))
-			flags |= GFP_DMA;
-		else
-			flags |= GFP_DMA32;
-	}
+	flags &= ~(GFP_DMA | GFP_DMA32);
 
 	vaddr = (void *)__get_free_pages(flags, order);
 	if (!vaddr)

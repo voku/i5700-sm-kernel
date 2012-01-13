@@ -651,15 +651,13 @@ void unlock_new_inode(struct inode *inode)
 	}
 #endif
 	/*
-	 * This is special!  We do not need the spinlock when clearing I_LOCK,
-	 * because we're guaranteed that nobody else tries to do anything about
-	 * the state of the inode when it is locked, as we just created it (so
-	 * there can be no old holders that haven't tested I_LOCK).
-	 * However we must emit the memory barrier so that other CPUs reliably
-	 * see the clearing of I_LOCK after the other inode initialisation has
-	 * completed.
+	 * This is special!  We do not need the spinlock
+	 * when clearing I_LOCK, because we're guaranteed
+	 * that nobody else tries to do anything about the
+	 * state of the inode when it is locked, as we
+	 * just created it (so there can be no old holders
+	 * that haven't tested I_LOCK).
 	 */
-	smp_mb();
 	WARN_ON((inode->i_state & (I_LOCK|I_NEW)) != (I_LOCK|I_NEW));
 	inode->i_state &= ~(I_LOCK|I_NEW);
 	wake_up_inode(inode);
@@ -1549,8 +1547,7 @@ void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
 	else if (S_ISSOCK(mode))
 		inode->i_fop = &bad_sock_fops;
 	else
-		printk(KERN_DEBUG "init_special_inode: bogus i_mode (%o) for"
-				  " inode %s:%lu\n", mode, inode->i_sb->s_id,
-				  inode->i_ino);
+		printk(KERN_DEBUG "init_special_inode: bogus i_mode (%o)\n",
+		       mode);
 }
 EXPORT_SYMBOL(init_special_inode);

@@ -1147,7 +1147,6 @@ acpi_add_single_object(struct acpi_device **child,
 		return -ENOMEM;
 	}
 
-	device->device_type = type;
 	device->handle = handle;
 	device->parent = parent;
 	device->bus_ops = *ops; /* workround for not call .start */

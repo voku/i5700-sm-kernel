@@ -85,7 +85,14 @@ register struct thread_info *__current_thread_info __asm__("$28");
 #define __HAVE_ARCH_THREAD_INFO_ALLOCATOR
 
 #ifdef CONFIG_DEBUG_STACK_USAGE
-#define alloc_thread_info(tsk) kzalloc(THREAD_SIZE, GFP_KERNEL)
+#define alloc_thread_info(tsk)					\
+({								\
+	struct thread_info *ret;				\
+								\
+	ret = kzalloc(THREAD_SIZE, GFP_KERNEL);			\
+								\
+	ret;							\
+})
 #else
 #define alloc_thread_info(tsk) kmalloc(THREAD_SIZE, GFP_KERNEL)
 #endif

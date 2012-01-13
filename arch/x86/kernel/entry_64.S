@@ -549,13 +549,20 @@ sysret_signal:
 	bt $TIF_SYSCALL_AUDIT,%edx
 	jc sysret_audit
 #endif
-	/*
-	 * We have a signal, or exit tracing or single-step.
-	 * These all wind up with the iret return path anyway,
-	 * so just join that path right now.
-	 */
-	FIXUP_TOP_OF_STACK %r11, -ARGOFFSET
-	jmp int_check_syscall_exit_work
+	/* edx:	work flags (arg3) */
+	leaq -ARGOFFSET(%rsp),%rdi # &pt_regs -> arg1
+	xorl %esi,%esi # oldset -> arg2
+	SAVE_REST
+	FIXUP_TOP_OF_STACK %r11
+	call do_notify_resume
+	RESTORE_TOP_OF_STACK %r11
+	RESTORE_REST
+	movl $_TIF_WORK_MASK,%edi
+	/* Use IRET because user could have changed frame. This
+	   works because ptregscall_common has called FIXUP_TOP_OF_STACK. */
+	DISABLE_INTERRUPTS(CLBR_NONE)
+	TRACE_IRQS_OFF
+	jmp int_with_check
 
 badsys:
 	movq $-ENOSYS,RAX-ARGOFFSET(%rsp)
@@ -662,7 +669,6 @@ int_careful:
 int_very_careful:
 	TRACE_IRQS_ON
 	ENABLE_INTERRUPTS(CLBR_NONE)
-int_check_syscall_exit_work:
 	SAVE_REST
 	/* Check for syscall exit trace */
 	testl $_TIF_WORK_SYSCALL_EXIT,%edx

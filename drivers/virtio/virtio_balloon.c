@@ -251,7 +251,7 @@ out:
 	return err;
 }
 
-static void __devexit virtballoon_remove(struct virtio_device *vdev)
+static void virtballoon_remove(struct virtio_device *vdev)
 {
 	struct virtio_balloon *vb = vdev->priv;
 

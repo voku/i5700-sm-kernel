@@ -421,3 +421,8 @@ void __init init_IRQ(void)
         set_eiem(cpu_eiem);	/* EIEM : enable all external intr */
 
 }
+
+void ack_bad_irq(unsigned int irq)
+{
+	printk(KERN_WARNING "unexpected IRQ %d\n", irq);
+}

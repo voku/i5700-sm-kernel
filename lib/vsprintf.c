@@ -1102,7 +1102,7 @@ int vsscanf(const char * buf, const char * fmt, va_list args)
 		 * advance both strings to next white space
 		 */
 		if (*fmt == '*') {
-			while (!isspace(*fmt) && *fmt != '%' && *fmt)
+			while (!isspace(*fmt) && *fmt)
 				fmt++;
 			while (!isspace(*str) && *str)
 				str++;

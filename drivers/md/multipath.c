@@ -474,7 +474,7 @@ static int multipath_run (mddev_t *mddev)
 	}
 	mddev->degraded = conf->raid_disks - conf->working_disks;
 
-	conf->pool = mempool_create_kmalloc_pool(NR_RESERVED_BUFS,
+	conf->pool = mempool_create_kzalloc_pool(NR_RESERVED_BUFS,
 						 sizeof(struct multipath_bh));
 	if (conf->pool == NULL) {
 		printk(KERN_ERR 

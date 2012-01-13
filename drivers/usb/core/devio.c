@@ -1091,8 +1091,7 @@ static int proc_do_submiturb(struct dev_state *ps, struct usbdevfs_urb *uurb,
 			}
 			totlen += isopkt[u].length;
 		}
-		/* 3072 * 64 microframes */
-		if (totlen > 196608) {
+		if (totlen > 32768) {
 			kfree(isopkt);
 			return -EINVAL;
 		}

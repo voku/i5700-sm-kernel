@@ -536,8 +536,6 @@ static irqreturn_t __devinit i8042_aux_test_irq(int irq, void *dev_id)
 	str = i8042_read_status();
 	if (str & I8042_STR_OBF) {
 		data = i8042_read_data();
-		dbg("%02x <- i8042 (aux_test_irq, %s)",
-			data, str & I8042_STR_AUXDATA ? "aux" : "kbd");
 		if (i8042_irq_being_tested &&
 		    data == 0xa5 && (str & I8042_STR_AUXDATA))
 			complete(&i8042_aux_irq_delivered);
@@ -679,7 +677,6 @@ static int __devinit i8042_check_aux(void)
  * AUX IRQ was never delivered so we need to flush the controller to
  * get rid of the byte we put there; otherwise keyboard may not work.
  */
-		dbg("     -- i8042 (aux irq test timeout)");
 		i8042_flush();
 		retval = -1;
 	}

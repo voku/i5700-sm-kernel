@@ -2647,11 +2647,6 @@ enum latency_range {
 
 /**
  * e1000_update_itr - update the dynamic ITR value based on statistics
- * @adapter: pointer to adapter
- * @itr_setting: current adapter->itr
- * @packets: the number of packets during this measurement interval
- * @bytes: the number of bytes during this measurement interval
- *
  *      Stores a new ITR value based on packets and byte
  *      counts during the last interrupt.  The advantage of per interrupt
  *      computation is faster updates and more accurate ITR for the current
@@ -2661,6 +2656,10 @@ enum latency_range {
  *      while increasing bulk throughput.
  *      this functionality is controlled by the InterruptThrottleRate module
  *      parameter (see e1000_param.c)
+ * @adapter: pointer to adapter
+ * @itr_setting: current adapter->itr
+ * @packets: the number of packets during this measurement interval
+ * @bytes: the number of bytes during this measurement interval
  **/
 static unsigned int e1000_update_itr(struct e1000_adapter *adapter,
 				     u16 itr_setting, int packets, int bytes)
@@ -2989,9 +2988,8 @@ static int e1000_tx_map(struct e1000_adapter *adapter,
 			 * Avoid terminating buffers within evenly-aligned
 			 * dwords. */
 			if (unlikely(adapter->pcix_82544 &&
-			    !((unsigned long)(page_to_phys(frag->page) + offset
-			                      + size - 1) & 4) &&
-			    size > 4))
+			   !((unsigned long)(frag->page+offset+size-1) & 4) &&
+			   size > 4))
 				size -= 4;
 
 			buffer_info->length = size;
@@ -3327,8 +3325,7 @@ static int e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	}
 
 	if (likely(tso)) {
-		if (likely(hw->mac_type != e1000_82544))
-			tx_ring->last_tx_tso = 1;
+		tx_ring->last_tx_tso = 1;
 		tx_flags |= E1000_TX_FLAGS_TSO;
 	} else if (likely(e1000_tx_csum(adapter, tx_ring, skb)))
 		tx_flags |= E1000_TX_FLAGS_CSUM;
@@ -4013,22 +4010,13 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		length = le16_to_cpu(rx_desc->length);
 		/* !EOP means multiple descriptors were used to store a single
-		 * packet, if thats the case we need to toss it.  In fact, we
-		 * to toss every packet with the EOP bit clear and the next
-		 * frame that _does_ have the EOP bit set, as it is by
-		 * definition only a frame fragment
-		 */
-		if (unlikely(!(status & E1000_RXD_STAT_EOP)))
-			adapter->discarding = true;
-
-		if (adapter->discarding) {
+		 * packet, also make sure the frame isn't just CRC only */
+		if (unlikely(!(status & E1000_RXD_STAT_EOP) || (length <= 4))) {
 			/* All receives must fit into a single buffer */
 			E1000_DBG("%s: Receive packet consumed multiple"
 				  " buffers\n", netdev->name);
 			/* recycle */
 			buffer_info->skb = skb;
-			if (status & E1000_RXD_STAT_EOP)
-				adapter->discarding = false;
 			goto next_desc;
 		}
 

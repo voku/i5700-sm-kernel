@@ -824,9 +824,7 @@ int btrfs_write_tree_block(struct extent_buffer *buf)
 int btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
 {
 	return btrfs_wait_on_page_writeback_range(buf->first_page->mapping,
-				  buf->start >> PAGE_CACHE_SHIFT,
-				  (buf->start + buf->len - 1) >>
-				   PAGE_CACHE_SHIFT);
+				  buf->start, buf->start + buf->len - 1);
 }
 
 struct extent_buffer *read_tree_block(struct btrfs_root *root, u64 bytenr,

@@ -49,10 +49,10 @@ static void dump_mem(const char *str, unsigned long bottom, unsigned long top);
 void dump_backtrace_entry(unsigned long where, unsigned long from, unsigned long frame)
 {
 #ifdef CONFIG_KALLSYMS
-	char sym1[KSYM_SYMBOL_LEN], sym2[KSYM_SYMBOL_LEN];
-	sprint_symbol(sym1, where);
-	sprint_symbol(sym2, from);
-	printk("[<%08lx>] (%s) from [<%08lx>] (%s)\n", where, sym1, from, sym2);
+	printk("[<%08lx>] ", where);
+	print_symbol("(%s) ", where);
+	printk("from [<%08lx>] ", from);
+	print_symbol("(%s)\n", from);
 #else
 	printk("Function entered at [<%08lx>] from [<%08lx>]\n", where, from);
 #endif
@@ -80,7 +80,7 @@ static int verify_stack(unsigned long sp)
  */
 static void dump_mem(const char *str, unsigned long bottom, unsigned long top)
 {
-	unsigned long first;
+	unsigned long p = bottom & ~31;
 	mm_segment_t fs;
 	int i;
 
@@ -94,23 +94,20 @@ static void dump_mem(const char *str, unsigned long bottom, unsigned long top)
 
 	printk("%s(0x%08lx to 0x%08lx)\n", str, bottom, top);
 
-	for (first = bottom & ~31; first < top; first += 32) {
-		unsigned long p;
-		char str[sizeof(" 12345678") * 8 + 1];
+	for (p = bottom & ~31; p < top;) {
+		printk("%04lx: ", p & 0xffff);
 
-		memset(str, ' ', sizeof(str));
-		str[sizeof(str) - 1] = '\0';
+		for (i = 0; i < 8; i++, p += 4) {
+			unsigned int val;
 
-		for (p = first, i = 0; i < 8 && p < top; i++, p += 4) {
-			if (p >= bottom && p < top) {
-				unsigned long val;
-				if (__get_user(val, (unsigned long *)p) == 0)
-					sprintf(str + i * 9, " %08lx", val);
-				else
-					sprintf(str + i * 9, " ????????");
+			if (p < bottom || p >= top)
+				printk("         ");
+			else {
+				__get_user(val, (unsigned long *)p);
+				printk("%08x ", val);
 			}
 		}
-		printk("%04lx:%s\n", first & 0xffff, str);
+		printk ("\n");
 	}
 
 	set_fs(fs);
@@ -122,7 +119,6 @@ static void dump_instr(struct pt_regs *regs)
 	const int thumb = thumb_mode(regs);
 	const int width = thumb ? 4 : 8;
 	mm_segment_t fs;
-	char str[sizeof("00000000 ") * 5 + 2 + 1], *p = str;
 	int i;
 
 	/*
@@ -133,6 +129,7 @@ static void dump_instr(struct pt_regs *regs)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 
+	printk("Code: ");
 	for (i = -4; i < 1; i++) {
 		unsigned int val, bad;
 
@@ -142,14 +139,13 @@ static void dump_instr(struct pt_regs *regs)
 			bad = __get_user(val, &((u32 *)addr)[i]);
 
 		if (!bad)
-			p += sprintf(p, i == 0 ? "(%0*x) " : "%0*x ",
-					width, val);
+			printk(i == 0 ? "(%0*x) " : "%0*x ", width, val);
 		else {
-			p += sprintf(p, "bad PC value");
+			printk("bad PC value.");
 			break;
 		}
 	}
-	printk("Code: %s\n", str);
+	printk("\n");
 
 	set_fs(fs);
 }
@@ -408,14 +404,12 @@ static int bad_syscall(int n, struct pt_regs *regs)
 static inline void
 do_cache_op(unsigned long start, unsigned long end, int flags)
 {
-	struct mm_struct *mm = current->active_mm;
 	struct vm_area_struct *vma;
 
 	if (end < start || flags)
 		return;
 
-	down_read(&mm->mmap_sem);
-	vma = find_vma(mm, start);
+	vma = find_vma(current->active_mm, start);
 	if (vma && vma->vm_start < end) {
 		if (start < vma->vm_start)
 			start = vma->vm_start;
@@ -424,7 +418,6 @@ do_cache_op(unsigned long start, unsigned long end, int flags)
 
 		flush_cache_user_range(vma, start, end);
 	}
-	up_read(&mm->mmap_sem);
 }
 
 /*
@@ -489,8 +482,7 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 		thread->tp_value = regs->ARM_r0;
 #if defined(CONFIG_HAS_TLS_REG)
 		asm ("mcr p15, 0, %0, c13, c0, 3" : : "r" (regs->ARM_r0) );
-//#elif !defined(CONFIG_TLS_REG_EMUL)
-#endif
+#elif !defined(CONFIG_TLS_REG_EMUL)
 		/*
 		 * User space must never try to access this directly.
 		 * Expect your app to break eventually if you do so.
@@ -498,7 +490,7 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 		 * (see entry-armv.S for details)
 		 */
 		*((unsigned int *)0xffff0ff0) = regs->ARM_r0;
-//#endif
+#endif
 		return 0;
 
 #ifdef CONFIG_NEEDS_SYSCALL_FOR_CMPXCHG
@@ -558,7 +550,7 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 		   if not implemented, rather than raising SIGILL.  This
 		   way the calling program can gracefully determine whether
 		   a feature is supported.  */
-		if ((no & 0xffff) <= 0x7ff)
+		if (no <= 0x7ff)
 			return -ENOSYS;
 		break;
 	}

@@ -168,6 +168,7 @@ static void znet_tx_timeout (struct net_device *dev);
 static int znet_request_resources (struct net_device *dev)
 {
 	struct znet_private *znet = netdev_priv(dev);
+	unsigned long flags;
 
 	if (request_irq (dev->irq, &znet_interrupt, 0, "ZNet", dev))
 		goto failed;
@@ -185,9 +186,13 @@ static int znet_request_resources (struct net_device *dev)
  free_sia:
 	release_region (znet->sia_base, znet->sia_size);
  free_tx_dma:
+	flags = claim_dma_lock();
 	free_dma (znet->tx_dma);
+	release_dma_lock (flags);
  free_rx_dma:
+	flags = claim_dma_lock();
 	free_dma (znet->rx_dma);
+	release_dma_lock (flags);
  free_irq:
 	free_irq (dev->irq, dev);
  failed:
@@ -197,11 +202,14 @@ static int znet_request_resources (struct net_device *dev)
 static void znet_release_resources (struct net_device *dev)
 {
 	struct znet_private *znet = netdev_priv(dev);
+	unsigned long flags;
 
 	release_region (znet->sia_base, znet->sia_size);
 	release_region (dev->base_addr, znet->io_size);
+	flags = claim_dma_lock();
 	free_dma (znet->tx_dma);
 	free_dma (znet->rx_dma);
+	release_dma_lock (flags);
 	free_irq (dev->irq, dev);
 }
 

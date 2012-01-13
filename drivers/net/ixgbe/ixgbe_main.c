@@ -1977,10 +1977,7 @@ static void ixgbe_configure(struct ixgbe_adapter *adapter)
 	ixgbe_restore_vlan(adapter);
 #ifdef CONFIG_IXGBE_DCB
 	if (adapter->flags & IXGBE_FLAG_DCB_ENABLED) {
-		if (hw->mac.type == ixgbe_mac_82598EB)
-			netif_set_gso_max_size(netdev, 32768);
-		else
-			netif_set_gso_max_size(netdev, 65536);
+		netif_set_gso_max_size(netdev, 32768);
 		ixgbe_configure_dcb(adapter);
 	} else {
 		netif_set_gso_max_size(netdev, 65536);
@@ -2254,8 +2251,6 @@ void ixgbe_down(struct ixgbe_adapter *adapter)
 
 	ixgbe_napi_disable_all(adapter);
 
-	clear_bit(__IXGBE_SFP_MODULE_NOT_FOUND, &adapter->state);
-	del_timer_sync(&adapter->sfp_timer);
 	del_timer_sync(&adapter->watchdog_timer);
 	cancel_work_sync(&adapter->watchdog_task);
 

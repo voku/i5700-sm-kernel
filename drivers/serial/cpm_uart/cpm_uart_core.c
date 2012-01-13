@@ -639,7 +639,7 @@ static int cpm_uart_tx_pump(struct uart_port *port)
 	u8 *p;
 	int count;
 	struct uart_cpm_port *pinfo = (struct uart_cpm_port *)port;
-	struct circ_buf *xmit = &port->state->xmit;
+	struct circ_buf *xmit = &port->info->xmit;
 
 	/* Handle xon/xoff */
 	if (port->x_char) {

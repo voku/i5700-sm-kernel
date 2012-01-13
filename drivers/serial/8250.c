@@ -64,8 +64,6 @@ static int serial_index(struct uart_port *port)
 	return (serial8250_reg.minor - 64) + port->line;
 }
 
-static unsigned int skip_txen_test; /* force skip of txen test at init time */
-
 /*
  * Debugging.
  */
@@ -82,9 +80,6 @@ static unsigned int skip_txen_test; /* force skip of txen test at init time */
 #endif
 
 #define PASS_LIMIT	256
-
-#define BOTH_EMPTY 	(UART_LSR_TEMT | UART_LSR_THRE)
-
 
 /*
  * We default to IRQ0 for the "no irq" hack.   Some
@@ -1085,7 +1080,7 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	if (!up->port.iobase && !up->port.mapbase && !up->port.membase)
 		return;
 
-	DEBUG_AUTOCONF("ttyS%d: autoconf (0x%04lx, 0x%p): ",
+	DEBUG_AUTOCONF("ttyS%d: autoconf (0x%04x, 0x%p): ",
 		       serial_index(&up->port), up->port.iobase, up->port.membase);
 
 	/*
@@ -1335,12 +1330,14 @@ static void serial8250_start_tx(struct uart_port *port)
 		serial_out(up, UART_IER, up->ier);
 
 		if (up->bugs & UART_BUG_TXEN) {
-			unsigned char lsr;
+			unsigned char lsr, iir;
 			lsr = serial_in(up, UART_LSR);
 			up->lsr_saved_flags |= lsr & LSR_SAVE_FLAGS;
+			iir = serial_in(up, UART_IIR) & 0x0f;
 			if ((up->port.type == PORT_RM9000) ?
-				(lsr & UART_LSR_THRE) :
-				(lsr & UART_LSR_TEMT))
+				(lsr & UART_LSR_THRE &&
+				(iir == UART_IIR_NO_INT || iir == UART_IIR_THRI)) :
+				(lsr & UART_LSR_TEMT && iir & UART_IIR_NO_INT))
 				transmit_chars(up);
 		}
 	}
@@ -1788,7 +1785,7 @@ static unsigned int serial8250_tx_empty(struct uart_port *port)
 	up->lsr_saved_flags |= lsr & LSR_SAVE_FLAGS;
 	spin_unlock_irqrestore(&up->port.lock, flags);
 
-	return (lsr & BOTH_EMPTY) == BOTH_EMPTY ? TIOCSER_TEMT : 0;
+	return lsr & UART_LSR_TEMT ? TIOCSER_TEMT : 0;
 }
 
 static unsigned int serial8250_get_mctrl(struct uart_port *port)
@@ -1845,6 +1842,8 @@ static void serial8250_break_ctl(struct uart_port *port, int break_state)
 	serial_out(up, UART_LCR, up->lcr);
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
+
+#define BOTH_EMPTY (UART_LSR_TEMT | UART_LSR_THRE)
 
 /*
  *	Wait for transmitter & holding register to empty
@@ -2102,7 +2101,7 @@ static int serial8250_startup(struct uart_port *port)
 	   is variable. So, let's just don't test if we receive
 	   TX irq. This way, we'll never enable UART_BUG_TXEN.
 	 */
-	if (skip_txen_test || up->port.flags & UPF_NO_TXEN_TEST)
+	if (up->port.flags & UPF_NO_TXEN_TEST)
 		goto dont_test_tx_en;
 
 	/*
@@ -3235,9 +3234,6 @@ MODULE_PARM_DESC(share_irqs, "Share IRQs with other non-8250/16x50 devices"
 
 module_param(nr_uarts, uint, 0644);
 MODULE_PARM_DESC(nr_uarts, "Maximum number of UARTs supported. (1-" __MODULE_STRING(CONFIG_SERIAL_8250_NR_UARTS) ")");
-
-module_param(skip_txen_test, uint, 0644);
-MODULE_PARM_DESC(skip_txen_test, "Skip checking for the TXEN bug at init time");
 
 #ifdef CONFIG_SERIAL_8250_RSA
 module_param_array(probe_rsa, ulong, &probe_rsa_count, 0444);

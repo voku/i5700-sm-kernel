@@ -5685,7 +5685,10 @@ static int __devinit nv_probe(struct pci_dev *pci_dev, const struct pci_device_i
 		        dev->dev_addr);
 		dev_printk(KERN_ERR, &pci_dev->dev,
 			"Please complain to your hardware vendor. Switching to a random MAC.\n");
-		random_ether_addr(dev->dev_addr);
+		dev->dev_addr[0] = 0x00;
+		dev->dev_addr[1] = 0x00;
+		dev->dev_addr[2] = 0x6c;
+		get_random_bytes(&dev->dev_addr[3], 3);
 	}
 
 	dprintk(KERN_DEBUG "%s: MAC Address %pM\n",

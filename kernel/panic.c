@@ -176,7 +176,7 @@ static const struct tnt tnts[] = {
  *  'W' - Taint on warning.
  *  'C' - modules from drivers/staging are loaded.
  *
- *	The string is overwritten by the next call to print_tainted().
+ *	The string is overwritten by the next call to print_taint().
  */
 const char *print_tainted(void)
 {

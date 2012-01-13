@@ -1425,10 +1425,6 @@ static int ocfs2_statfs(struct dentry *dentry, struct kstatfs *buf)
 	buf->f_bavail = buf->f_bfree;
 	buf->f_files = numbits;
 	buf->f_ffree = freebits;
-	buf->f_fsid.val[0] = crc32_le(0, osb->uuid_str, OCFS2_VOL_UUID_LEN)
-				& 0xFFFFFFFFUL;
-	buf->f_fsid.val[1] = crc32_le(0, osb->uuid_str + OCFS2_VOL_UUID_LEN,
-				OCFS2_VOL_UUID_LEN) & 0xFFFFFFFFUL;
 
 	brelse(bh);
 
@@ -2247,8 +2243,7 @@ void __ocfs2_abort(struct super_block* sb,
 	/* Force a panic(). This stinks, but it's better than letting
 	 * things continue without having a proper hard readonly
 	 * here. */
-	if (!ocfs2_mount_local(OCFS2_SB(sb)))
-		OCFS2_SB(sb)->s_mount_opt |= OCFS2_MOUNT_ERRORS_PANIC;
+	OCFS2_SB(sb)->s_mount_opt |= OCFS2_MOUNT_ERRORS_PANIC;
 	ocfs2_handle_error(sb);
 }
 

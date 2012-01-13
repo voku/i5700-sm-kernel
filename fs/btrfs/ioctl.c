@@ -923,10 +923,9 @@ static long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
 					datao += off - key.offset;
 					datal -= off - key.offset;
 				}
-
-				if (key.offset + datal > off + len)
-					datal = off + len - key.offset;
-
+				if (key.offset + datao + datal + key.offset >
+				    off + len)
+					datal = off + len - key.offset - datao;
 				/* disko == 0 means it's a hole */
 				if (!disko)
 					datao = 0;
@@ -1035,15 +1034,15 @@ static long btrfs_ioctl_trans_start(struct file *file)
 	struct inode *inode = fdentry(file)->d_inode;
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct btrfs_trans_handle *trans;
-	int ret;
+	int ret = 0;
 
-	ret = -EPERM;
 	if (!capable(CAP_SYS_ADMIN))
-		goto out;
+		return -EPERM;
 
-	ret = -EINPROGRESS;
-	if (file->private_data)
+	if (file->private_data) {
+		ret = -EINPROGRESS;
 		goto out;
+	}
 
 	ret = mnt_want_write(file->f_path.mnt);
 	if (ret)
@@ -1053,19 +1052,12 @@ static long btrfs_ioctl_trans_start(struct file *file)
 	root->fs_info->open_ioctl_trans++;
 	mutex_unlock(&root->fs_info->trans_mutex);
 
-	ret = -ENOMEM;
 	trans = btrfs_start_ioctl_transaction(root, 0);
-	if (!trans)
-		goto out_drop;
-
-	file->private_data = trans;
-	return 0;
-
-out_drop:
-	mutex_lock(&root->fs_info->trans_mutex);
-	root->fs_info->open_ioctl_trans--;
-	mutex_unlock(&root->fs_info->trans_mutex);
-	mnt_drop_write(file->f_path.mnt);
+	if (trans)
+		file->private_data = trans;
+	else
+		ret = -ENOMEM;
+	/*printk(KERN_INFO "btrfs_ioctl_trans_start on %p\n", file);*/
 out:
 	return ret;
 }
@@ -1081,20 +1073,24 @@ long btrfs_ioctl_trans_end(struct file *file)
 	struct inode *inode = fdentry(file)->d_inode;
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct btrfs_trans_handle *trans;
+	int ret = 0;
 
 	trans = file->private_data;
-	if (!trans)
-		return -EINVAL;
-	file->private_data = NULL;
-
+	if (!trans) {
+		ret = -EINVAL;
+		goto out;
+	}
 	btrfs_end_transaction(trans, root);
+	file->private_data = NULL;
 
 	mutex_lock(&root->fs_info->trans_mutex);
 	root->fs_info->open_ioctl_trans--;
 	mutex_unlock(&root->fs_info->trans_mutex);
 
 	mnt_drop_write(file->f_path.mnt);
-	return 0;
+
+out:
+	return ret;
 }
 
 long btrfs_ioctl(struct file *file, unsigned int

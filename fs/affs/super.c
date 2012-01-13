@@ -183,7 +183,7 @@ parse_options(char *options, uid_t *uid, gid_t *gid, int *mode, int *reserved, s
 		switch (token) {
 		case Opt_bs:
 			if (match_int(&args[0], &n))
-				return 0;
+				return -EINVAL;
 			if (n != 512 && n != 1024 && n != 2048
 			    && n != 4096) {
 				printk ("AFFS: Invalid blocksize (512, 1024, 2048, 4096 allowed)\n");
@@ -193,7 +193,7 @@ parse_options(char *options, uid_t *uid, gid_t *gid, int *mode, int *reserved, s
 			break;
 		case Opt_mode:
 			if (match_octal(&args[0], &option))
-				return 0;
+				return 1;
 			*mode = option & 0777;
 			*mount_opts |= SF_SETMODE;
 			break;
@@ -213,21 +213,21 @@ parse_options(char *options, uid_t *uid, gid_t *gid, int *mode, int *reserved, s
 			break;
 		case Opt_reserved:
 			if (match_int(&args[0], reserved))
-				return 0;
+				return 1;
 			break;
 		case Opt_root:
 			if (match_int(&args[0], root))
-				return 0;
+				return 1;
 			break;
 		case Opt_setgid:
 			if (match_int(&args[0], &option))
-				return 0;
+				return 1;
 			*gid = option;
 			*mount_opts |= SF_SETGID;
 			break;
 		case Opt_setuid:
 			if (match_int(&args[0], &option))
-				return 0;
+				return -EINVAL;
 			*uid = option;
 			*mount_opts |= SF_SETUID;
 			break;
@@ -296,8 +296,6 @@ static int affs_fill_super(struct super_block *sb, void *data, int silent)
 				&blocksize,&sbi->s_prefix,
 				sbi->s_volume, &mount_flags)) {
 		printk(KERN_ERR "AFFS: Error parsing options\n");
-		kfree(sbi->s_prefix);
-		kfree(sbi);
 		return -EINVAL;
 	}
 	/* N.B. after this point s_prefix must be released */

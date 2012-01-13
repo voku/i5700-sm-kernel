@@ -161,12 +161,6 @@ config GPIO_BT8XX
 
 	  If unsure, say N.
 
-config GPIO_LANGWELL
-	bool "Intel Moorestown Platform Langwell GPIO support"
-	depends on PCI
-	help
-	  Say Y here to support Intel Moorestown platform GPIO.
-
 comment "SPI GPIO expanders:"
 
 config GPIO_MAX7301
@@ -181,12 +175,5 @@ config GPIO_MCP23S08
 	help
 	  SPI driver for Microchip MCP23S08 I/O expander.  This provides
 	  a GPIO interface supporting inputs and outputs.
-
-config GPIO_MC33880
-	tristate "Freescale MC33880 high-side/low-side switch"
-	depends on SPI_MASTER
-	help
-	  SPI driver for Freescale MC33880 high-side/low-side switch.
-	  This provides GPIO interface supporting inputs and outputs.
 
 endif

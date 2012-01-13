@@ -76,32 +76,14 @@ static void intel_hdmi_dpms(struct drm_encoder *encoder, int mode)
 	struct intel_hdmi_priv *hdmi_priv = intel_output->dev_priv;
 	u32 temp;
 
-	temp = I915_READ(hdmi_priv->sdvox_reg);
-
-	/* HW workaround, need to toggle enable bit off and on for 12bpc, but
-	 * we do this anyway which shows more stable in testing.
-	 */
-	if (IS_IGDNG(dev)) {
-		I915_WRITE(hdmi_priv->sdvox_reg, temp & ~SDVO_ENABLE);
-		POSTING_READ(hdmi_priv->sdvox_reg);
-	}
-
 	if (mode != DRM_MODE_DPMS_ON) {
-		temp &= ~SDVO_ENABLE;
+		temp = I915_READ(hdmi_priv->sdvox_reg);
+		I915_WRITE(hdmi_priv->sdvox_reg, temp & ~SDVO_ENABLE);
 	} else {
-		temp |= SDVO_ENABLE;
+		temp = I915_READ(hdmi_priv->sdvox_reg);
+		I915_WRITE(hdmi_priv->sdvox_reg, temp | SDVO_ENABLE);
 	}
-
-	I915_WRITE(hdmi_priv->sdvox_reg, temp);
 	POSTING_READ(hdmi_priv->sdvox_reg);
-
-	/* HW workaround, need to write this twice for issue that may result
-	 * in first write getting masked.
-	 */
-	if (IS_IGDNG(dev)) {
-		I915_WRITE(hdmi_priv->sdvox_reg, temp);
-		POSTING_READ(hdmi_priv->sdvox_reg);
-	}
 }
 
 static void intel_hdmi_save(struct drm_connector *connector)
@@ -251,7 +233,7 @@ void intel_hdmi_init(struct drm_device *dev, int sdvox_reg)
 
 	connector = &intel_output->base;
 	drm_connector_init(dev, connector, &intel_hdmi_connector_funcs,
-			   DRM_MODE_CONNECTOR_HDMIA);
+			   DRM_MODE_CONNECTOR_DVID);
 	drm_connector_helper_add(connector, &intel_hdmi_connector_helper_funcs);
 
 	intel_output->type = INTEL_OUTPUT_HDMI;

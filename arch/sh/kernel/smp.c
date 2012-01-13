@@ -35,8 +35,6 @@ static inline void __init smp_store_cpu_info(unsigned int cpu)
 {
 	struct sh_cpuinfo *c = cpu_data + cpu;
 
-	memcpy(c, &boot_cpu_data, sizeof(struct sh_cpuinfo));
-
 	c->loops_per_jiffy = loops_per_jiffy;
 }
 

@@ -1990,8 +1990,6 @@ static const char *alc_slave_sws[] = {
 	"Speaker Playback Switch",
 	"Mono Playback Switch",
 	"IEC958 Playback Switch",
-	"Line-Out Playback Switch",
-	"PCM Playback Switch",
 	NULL,
 };
 

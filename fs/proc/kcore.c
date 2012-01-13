@@ -20,7 +20,6 @@
 #include <linux/init.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
-#include <linux/list.h>
 
 #define CORE_STR "CORE"
 
@@ -58,18 +57,18 @@ struct memelfnote
 	void *data;
 };
 
-static LIST_HEAD(kclist_head);
+static struct kcore_list *kclist;
 static DEFINE_RWLOCK(kclist_lock);
 
 void
-kclist_add(struct kcore_list *new, void *addr, size_t size, int type)
+kclist_add(struct kcore_list *new, void *addr, size_t size)
 {
 	new->addr = (unsigned long)addr;
 	new->size = size;
-	new->type = type;
 
 	write_lock(&kclist_lock);
-	list_add_tail(&new->list, &kclist_head);
+	new->next = kclist;
+	kclist = new;
 	write_unlock(&kclist_lock);
 }
 
@@ -81,7 +80,7 @@ static size_t get_kcore_size(int *nphdr, size_t *elf_buflen)
 	*nphdr = 1; /* PT_NOTE */
 	size = 0;
 
-	list_for_each_entry(m, &kclist_head, list) {
+	for (m=kclist; m; m=m->next) {
 		try = kc_vaddr_to_offset((size_t)m->addr + m->size);
 		if (try > size)
 			size = try;
@@ -193,7 +192,7 @@ static void elf_kcore_store_hdr(char *bufp, int nphdr, int dataoff)
 	nhdr->p_align	= 0;
 
 	/* setup ELF PT_LOAD program header for every area */
-	list_for_each_entry(m, &kclist_head, list) {
+	for (m=kclist; m; m=m->next) {
 		phdr = (struct elf_phdr *) bufp;
 		bufp += sizeof(struct elf_phdr);
 		offset += sizeof(struct elf_phdr);
@@ -318,7 +317,7 @@ read_kcore(struct file *file, char __user *buffer, size_t buflen, loff_t *fpos)
 		struct kcore_list *m;
 
 		read_lock(&kclist_lock);
-		list_for_each_entry(m, &kclist_head, list) {
+		for (m=kclist; m; m=m->next) {
 			if (start >= m->addr && start < (m->addr+m->size))
 				break;
 		}
@@ -329,12 +328,43 @@ read_kcore(struct file *file, char __user *buffer, size_t buflen, loff_t *fpos)
 				return -EFAULT;
 		} else if (is_vmalloc_addr((void *)start)) {
 			char * elf_buf;
+			struct vm_struct *m;
+			unsigned long curstart = start;
+			unsigned long cursize = tsz;
 
 			elf_buf = kzalloc(tsz, GFP_KERNEL);
 			if (!elf_buf)
 				return -ENOMEM;
-			vread(elf_buf, (char *)start, tsz);
-			/* we have to zero-fill user buffer even if no read */
+
+			read_lock(&vmlist_lock);
+			for (m=vmlist; m && cursize; m=m->next) {
+				unsigned long vmstart;
+				unsigned long vmsize;
+				unsigned long msize = m->size - PAGE_SIZE;
+
+				if (((unsigned long)m->addr + msize) < 
+								curstart)
+					continue;
+				if ((unsigned long)m->addr > (curstart + 
+								cursize))
+					break;
+				vmstart = (curstart < (unsigned long)m->addr ? 
+					(unsigned long)m->addr : curstart);
+				if (((unsigned long)m->addr + msize) > 
+							(curstart + cursize))
+					vmsize = curstart + cursize - vmstart;
+				else
+					vmsize = (unsigned long)m->addr + 
+							msize - vmstart;
+				curstart = vmstart + vmsize;
+				cursize -= vmsize;
+				/* don't dump ioremap'd stuff! (TA) */
+				if (m->flags & VM_IOREMAP)
+					continue;
+				memcpy(elf_buf + (vmstart - start),
+					(char *)vmstart, vmsize);
+			}
+			read_unlock(&vmlist_lock);
 			if (copy_to_user(buffer, elf_buf, tsz)) {
 				kfree(elf_buf);
 				return -EFAULT;
@@ -375,6 +405,9 @@ read_kcore(struct file *file, char __user *buffer, size_t buflen, loff_t *fpos)
 static int __init proc_kcore_init(void)
 {
 	proc_root_kcore = proc_create("kcore", S_IRUSR, NULL, &proc_kcore_operations);
+	if (proc_root_kcore)
+		proc_root_kcore->size =
+				(size_t)high_memory - PAGE_OFFSET + PAGE_SIZE;
 	return 0;
 }
 module_init(proc_kcore_init);

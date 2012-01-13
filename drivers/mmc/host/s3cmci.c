@@ -57,6 +57,8 @@ static const int dbgmap_debug = dbg_err | dbg_debug;
 		dev_dbg(&host->pdev->dev, args);  \
 	} while (0)
 
+#define RESSIZE(ressource) (((ressource)->end - (ressource)->start)+1)
+
 static struct s3c2410_dma_client s3cmci_dma_client = {
 	.name		= "s3c-mci",
 };
@@ -680,9 +682,9 @@ out:
 fail_request:
 	host->mrq->data->error = -EINVAL;
 	host->complete_what = COMPLETION_FINALIZE;
-	clear_imask(host);
-
+	writel(0, host->base + host->sdiimsk);
 	goto out;
+
 }
 
 static void finalize_request(struct s3cmci_host *host)
@@ -725,7 +727,7 @@ static void finalize_request(struct s3cmci_host *host)
 	writel(0, host->base + S3C2410_SDICMDARG);
 	writel(S3C2410_SDIDCON_STOP, host->base + S3C2410_SDIDCON);
 	writel(0, host->base + S3C2410_SDICMDCON);
-	clear_imask(host);
+	writel(0, host->base + host->sdiimsk);
 
 	if (cmd->data && cmd->error)
 		cmd->data->error = cmd->error;
@@ -1243,14 +1245,11 @@ static inline void s3cmci_cpufreq_deregister(struct s3cmci_host *host)
 }
 #endif
 
-static int __devinit s3cmci_probe(struct platform_device *pdev)
+static int __devinit s3cmci_probe(struct platform_device *pdev, int is2440)
 {
 	struct s3cmci_host *host;
 	struct mmc_host	*mmc;
 	int ret;
-	int is2440;
-
-	is2440 = platform_get_device_id(pdev)->driver_data;
 
 	mmc = mmc_alloc_host(sizeof(struct s3cmci_host), &pdev->dev);
 	if (!mmc) {
@@ -1298,7 +1297,7 @@ static int __devinit s3cmci_probe(struct platform_device *pdev)
 	}
 
 	host->mem = request_mem_region(host->mem->start,
-				       resource_size(host->mem), pdev->name);
+				       RESSIZE(host->mem), pdev->name);
 
 	if (!host->mem) {
 		dev_err(&pdev->dev, "failed to request io memory region.\n");
@@ -1306,7 +1305,7 @@ static int __devinit s3cmci_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-	host->base = ioremap(host->mem->start, resource_size(host->mem));
+	host->base = ioremap(host->mem->start, RESSIZE(host->mem));
 	if (!host->base) {
 		dev_err(&pdev->dev, "failed to ioremap() io memory region.\n");
 		ret = -EINVAL;
@@ -1433,7 +1432,7 @@ static int __devinit s3cmci_probe(struct platform_device *pdev)
 	iounmap(host->base);
 
  probe_free_mem_region:
-	release_mem_region(host->mem->start, resource_size(host->mem));
+	release_mem_region(host->mem->start, RESSIZE(host->mem));
 
  probe_free_host:
 	mmc_free_host(mmc);
@@ -1469,77 +1468,93 @@ static int __devexit s3cmci_remove(struct platform_device *pdev)
 	free_irq(host->irq, host);
 
 	iounmap(host->base);
-	release_mem_region(host->mem->start, resource_size(host->mem));
+	release_mem_region(host->mem->start, RESSIZE(host->mem));
 
 	mmc_free_host(mmc);
 	return 0;
 }
 
-static struct platform_device_id s3cmci_driver_ids[] = {
-	{
-		.name	= "s3c2410-sdi",
-		.driver_data	= 0,
-	}, {
-		.name	= "s3c2412-sdi",
-		.driver_data	= 1,
-	}, {
-		.name	= "s3c2440-sdi",
-		.driver_data	= 1,
-	},
-	{ }
-};
+static int __devinit s3cmci_2410_probe(struct platform_device *dev)
+{
+	return s3cmci_probe(dev, 0);
+}
 
-MODULE_DEVICE_TABLE(platform, s3cmci_driver_ids);
+static int __devinit s3cmci_2412_probe(struct platform_device *dev)
+{
+	return s3cmci_probe(dev, 1);
+}
 
+static int __devinit s3cmci_2440_probe(struct platform_device *dev)
+{
+	return s3cmci_probe(dev, 1);
+}
 
 #ifdef CONFIG_PM
 
-static int s3cmci_suspend(struct device *dev)
+static int s3cmci_suspend(struct platform_device *dev, pm_message_t state)
 {
-	struct mmc_host *mmc = platform_get_drvdata(to_platform_device(dev));
-	struct pm_message event = { PM_EVENT_SUSPEND };
+	struct mmc_host *mmc = platform_get_drvdata(dev);
 
-	return mmc_suspend_host(mmc, event);
+	return  mmc_suspend_host(mmc, state);
 }
 
-static int s3cmci_resume(struct device *dev)
+static int s3cmci_resume(struct platform_device *dev)
 {
-	struct mmc_host *mmc = platform_get_drvdata(to_platform_device(dev));
+	struct mmc_host *mmc = platform_get_drvdata(dev);
 
 	return mmc_resume_host(mmc);
 }
 
-static struct dev_pm_ops s3cmci_pm = {
+#else /* CONFIG_PM */
+#define s3cmci_suspend NULL
+#define s3cmci_resume NULL
+#endif /* CONFIG_PM */
+
+
+static struct platform_driver s3cmci_2410_driver = {
+	.driver.name	= "s3c2410-sdi",
+	.driver.owner	= THIS_MODULE,
+	.probe		= s3cmci_2410_probe,
+	.remove		= __devexit_p(s3cmci_remove),
+	.shutdown	= s3cmci_shutdown,
 	.suspend	= s3cmci_suspend,
 	.resume		= s3cmci_resume,
 };
 
-#define s3cmci_pm_ops &s3cmci_pm
-#else /* CONFIG_PM */
-#define s3cmci_pm_ops NULL
-#endif /* CONFIG_PM */
-
-
-static struct platform_driver s3cmci_driver = {
-	.driver	= {
-		.name	= "s3c-sdi",
-		.owner	= THIS_MODULE,
-		.pm	= s3cmci_pm_ops,
-	},
-	.id_table	= s3cmci_driver_ids,
-	.probe		= s3cmci_probe,
+static struct platform_driver s3cmci_2412_driver = {
+	.driver.name	= "s3c2412-sdi",
+	.driver.owner	= THIS_MODULE,
+	.probe		= s3cmci_2412_probe,
 	.remove		= __devexit_p(s3cmci_remove),
 	.shutdown	= s3cmci_shutdown,
+	.suspend	= s3cmci_suspend,
+	.resume		= s3cmci_resume,
 };
+
+static struct platform_driver s3cmci_2440_driver = {
+	.driver.name	= "s3c2440-sdi",
+	.driver.owner	= THIS_MODULE,
+	.probe		= s3cmci_2440_probe,
+	.remove		= __devexit_p(s3cmci_remove),
+	.shutdown	= s3cmci_shutdown,
+	.suspend	= s3cmci_suspend,
+	.resume		= s3cmci_resume,
+};
+
 
 static int __init s3cmci_init(void)
 {
-	return platform_driver_register(&s3cmci_driver);
+	platform_driver_register(&s3cmci_2410_driver);
+	platform_driver_register(&s3cmci_2412_driver);
+	platform_driver_register(&s3cmci_2440_driver);
+	return 0;
 }
 
 static void __exit s3cmci_exit(void)
 {
-	platform_driver_unregister(&s3cmci_driver);
+	platform_driver_unregister(&s3cmci_2410_driver);
+	platform_driver_unregister(&s3cmci_2412_driver);
+	platform_driver_unregister(&s3cmci_2440_driver);
 }
 
 module_init(s3cmci_init);
@@ -1548,3 +1563,6 @@ module_exit(s3cmci_exit);
 MODULE_DESCRIPTION("Samsung S3C MMC/SD Card Interface driver");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Thomas Kleffel <tk@maintech.de>, Ben Dooks <ben-linux@fluff.org>");
+MODULE_ALIAS("platform:s3c2410-sdi");
+MODULE_ALIAS("platform:s3c2412-sdi");
+MODULE_ALIAS("platform:s3c2440-sdi");

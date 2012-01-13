@@ -1027,12 +1027,10 @@ static int __devinit sab_probe(struct of_device *op, const struct of_device_id *
 		goto out1;
 
 	sunserial_console_match(SUNSAB_CONSOLE(), op->node,
-				&sunsab_reg, up[0].port.line,
-				false);
+				&sunsab_reg, up[0].port.line);
 
 	sunserial_console_match(SUNSAB_CONSOLE(), op->node,
-				&sunsab_reg, up[1].port.line,
-				false);
+				&sunsab_reg, up[1].port.line);
 
 	err = uart_add_one_port(&sunsab_reg, &up[0].port);
 	if (err)
@@ -1118,6 +1116,7 @@ static int __init sunsab_init(void)
 		if (!sunsab_ports)
 			return -ENOMEM;
 
+		sunsab_reg.cons = SUNSAB_CONSOLE();
 		err = sunserial_register_minors(&sunsab_reg, num_channels);
 		if (err) {
 			kfree(sunsab_ports);

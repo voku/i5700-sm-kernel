@@ -694,17 +694,10 @@ static void b43_upload_card_macaddress(struct b43_wldev *dev)
 static void b43_set_slot_time(struct b43_wldev *dev, u16 slot_time)
 {
 	/* slot_time is in usec. */
-	/* This test used to exit for all but a G PHY. */
-	if (b43_current_band(dev->wl) == IEEE80211_BAND_5GHZ)
+	if (dev->phy.type != B43_PHYTYPE_G)
 		return;
-	b43_write16(dev, B43_MMIO_IFSSLOT, 510 + slot_time);
-	/* Shared memory location 0x0010 is the slot time and should be
-	 * set to slot_time; however, this register is initially 0 and changing
-	 * the value adversely affects the transmit rate for BCM4311
-	 * devices. Until this behavior is unterstood, delete this step
-	 *
-	 * b43_shm_write16(dev, B43_SHM_SHARED, 0x0010, slot_time);
-	 */
+	b43_write16(dev, 0x684, 510 + slot_time);
+	b43_shm_write16(dev, B43_SHM_SHARED, 0x0010, slot_time);
 }
 
 static void b43_short_slot_timing_enable(struct b43_wldev *dev)
@@ -2280,7 +2273,11 @@ static int b43_upload_microcode(struct b43_wldev *dev)
 			err = -ENODEV;
 			goto error;
 		}
-		msleep(50);
+		msleep_interruptible(50);
+		if (signal_pending(current)) {
+			err = -EINTR;
+			goto error;
+		}
 	}
 	b43_read32(dev, B43_MMIO_GEN_IRQ_REASON);	/* dummy read */
 
@@ -2611,20 +2608,6 @@ static void b43_adjust_opmode(struct b43_wldev *dev)
 			cfp_pretbtt = 50;
 	}
 	b43_write16(dev, 0x612, cfp_pretbtt);
-
-	/* FIXME: We don't currently implement the PMQ mechanism,
-	 *        so always disable it. If we want to implement PMQ,
-	 *        we need to enable it here (clear DISCPMQ) in AP mode.
-	 */
-	if (0  /* ctl & B43_MACCTL_AP */) {
-		b43_write32(dev, B43_MMIO_MACCTL,
-			    b43_read32(dev, B43_MMIO_MACCTL)
-			    & ~B43_MACCTL_DISCPMQ);
-	} else {
-		b43_write32(dev, B43_MMIO_MACCTL,
-			    b43_read32(dev, B43_MMIO_MACCTL)
-			    | B43_MACCTL_DISCPMQ);
-	}
 }
 
 static void b43_rate_memory_write(struct b43_wldev *dev, u16 rate, int is_ofdm)
@@ -4143,8 +4126,6 @@ static int b43_wireless_core_init(struct b43_wldev *dev)
 	b43_security_init(dev);
 	if (!dev->suspend_in_progress)
 		b43_rng_init(wl);
-
-	ieee80211_wake_queues(dev->wl->hw);
 
 	b43_set_status(dev, B43_STAT_INITIALIZED);
 

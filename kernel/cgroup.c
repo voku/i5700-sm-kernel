@@ -1398,13 +1398,14 @@ static ssize_t cgroup_write_X64(struct cgroup *cgrp, struct cftype *cft,
 		return -EFAULT;
 
 	buffer[nbytes] = 0;     /* nul-terminate */
+	strstrip(buffer);
 	if (cft->write_u64) {
-		u64 val = simple_strtoull(strstrip(buffer), &end, 0);
+		u64 val = simple_strtoull(buffer, &end, 0);
 		if (*end)
 			return -EINVAL;
 		retval = cft->write_u64(cgrp, cft, val);
 	} else {
-		s64 val = simple_strtoll(strstrip(buffer), &end, 0);
+		s64 val = simple_strtoll(buffer, &end, 0);
 		if (*end)
 			return -EINVAL;
 		retval = cft->write_s64(cgrp, cft, val);
@@ -1440,7 +1441,8 @@ static ssize_t cgroup_write_string(struct cgroup *cgrp, struct cftype *cft,
 	}
 
 	buffer[nbytes] = 0;     /* nul-terminate */
-	retval = cft->write_string(cgrp, cft, strstrip(buffer));
+	strstrip(buffer);
+	retval = cft->write_string(cgrp, cft, buffer);
 	if (!retval)
 		retval = nbytes;
 out:

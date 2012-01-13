@@ -900,7 +900,6 @@ static ssize_t cosa_write(struct file *file,
 			current->state = TASK_RUNNING;
 			chan->tx_status = 1;
 			spin_unlock_irqrestore(&cosa->lock, flags);
-			up(&chan->wsem);
 			return -ERESTARTSYS;
 		}
 	}

@@ -416,9 +416,7 @@ ecryptfs_find_global_auth_tok_for_sig(
 			    &mount_crypt_stat->global_auth_tok_list,
 			    mount_crypt_stat_list) {
 		if (memcmp(walker->sig, sig, ECRYPTFS_SIG_SIZE_HEX) == 0) {
-			rc = key_validate(walker->global_auth_tok_key);
-			if (!rc)
-				(*global_auth_tok) = walker;
+			(*global_auth_tok) = walker;
 			goto out;
 		}
 	}
@@ -614,12 +612,7 @@ ecryptfs_write_tag_70_packet(char *dest, size_t *remaining_bytes,
 	}
 	/* TODO: Support other key modules than passphrase for
 	 * filename encryption */
-	if (s->auth_tok->token_type != ECRYPTFS_PASSWORD) {
-		rc = -EOPNOTSUPP;
-		printk(KERN_INFO "%s: Filename encryption only supports "
-		       "password tokens\n", __func__);
-		goto out_free_unlock;
-	}
+	BUG_ON(s->auth_tok->token_type != ECRYPTFS_PASSWORD);
 	sg_init_one(
 		&s->hash_sg,
 		(u8 *)s->auth_tok->token.password.session_key_encryption_key,
@@ -918,12 +911,7 @@ ecryptfs_parse_tag_70_packet(char **filename, size_t *filename_size,
 	}
 	/* TODO: Support other key modules than passphrase for
 	 * filename encryption */
-	if (s->auth_tok->token_type != ECRYPTFS_PASSWORD) {
-		rc = -EOPNOTSUPP;
-		printk(KERN_INFO "%s: Filename encryption only supports "
-		       "password tokens\n", __func__);
-		goto out_free_unlock;
-	}
+	BUG_ON(s->auth_tok->token_type != ECRYPTFS_PASSWORD);
 	rc = crypto_blkcipher_setkey(
 		s->desc.tfm,
 		s->auth_tok->token.password.session_key_encryption_key,
@@ -1322,10 +1310,8 @@ parse_tag_3_packet(struct ecryptfs_crypt_stat *crypt_stat,
 		rc = -EINVAL;
 		goto out_free;
 	}
-	rc = ecryptfs_cipher_code_to_string(crypt_stat->cipher,
-					    (u16)data[(*packet_size)]);
-	if (rc)
-		goto out_free;
+	ecryptfs_cipher_code_to_string(crypt_stat->cipher,
+				       (u16)data[(*packet_size)]);
 	/* A little extra work to differentiate among the AES key
 	 * sizes; see RFC2440 */
 	switch(data[(*packet_size)++]) {
@@ -1336,9 +1322,7 @@ parse_tag_3_packet(struct ecryptfs_crypt_stat *crypt_stat,
 		crypt_stat->key_size =
 			(*new_auth_tok)->session_key.encrypted_key_size;
 	}
-	rc = ecryptfs_init_crypt_ctx(crypt_stat);
-	if (rc)
-		goto out_free;
+	ecryptfs_init_crypt_ctx(crypt_stat);
 	if (unlikely(data[(*packet_size)++] != 0x03)) {
 		printk(KERN_WARNING "Only S2K ID 3 is currently supported\n");
 		rc = -ENOSYS;
@@ -2370,18 +2354,21 @@ struct kmem_cache *ecryptfs_key_sig_cache;
 int ecryptfs_add_keysig(struct ecryptfs_crypt_stat *crypt_stat, char *sig)
 {
 	struct ecryptfs_key_sig *new_key_sig;
+	int rc = 0;
 
 	new_key_sig = kmem_cache_alloc(ecryptfs_key_sig_cache, GFP_KERNEL);
 	if (!new_key_sig) {
+		rc = -ENOMEM;
 		printk(KERN_ERR
 		       "Error allocating from ecryptfs_key_sig_cache\n");
-		return -ENOMEM;
+		goto out;
 	}
 	memcpy(new_key_sig->keysig, sig, ECRYPTFS_SIG_SIZE_HEX);
-	/* Caller must hold keysig_list_mutex */
+	mutex_lock(&crypt_stat->keysig_list_mutex);
 	list_add(&new_key_sig->crypt_stat_list, &crypt_stat->keysig_list);
-
-	return 0;
+	mutex_unlock(&crypt_stat->keysig_list_mutex);
+out:
+	return rc;
 }
 
 struct kmem_cache *ecryptfs_global_auth_tok_cache;

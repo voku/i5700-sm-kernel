@@ -586,7 +586,7 @@ static void exp_proc_remove(struct net *net)
 #endif /* CONFIG_PROC_FS */
 }
 
-module_param_named(expect_hashsize, nf_ct_expect_hsize, uint, 0400);
+module_param_named(expect_hashsize, nf_ct_expect_hsize, uint, 0600);
 
 int nf_conntrack_expect_init(struct net *net)
 {

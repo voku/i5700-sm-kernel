@@ -2087,6 +2087,13 @@ UNUSUAL_DEV(  0x2735, 0x100b, 0x0000, 0x9999,
 		US_SC_DEVICE, US_PR_DEVICE, NULL,
 		US_FL_GO_SLOW ),
 
+/* Reported by Rohan Hart <rohan.hart17@gmail.com> */
+UNUSUAL_DEV(  0x2770, 0x915d, 0x0010, 0x0010,
+		"INTOVA",
+		"Pixtreme",
+		US_SC_DEVICE, US_PR_DEVICE, NULL,
+		US_FL_FIX_CAPACITY ),
+
 /* Reported by Frederic Marchal <frederic.marchal@wowcompany.com>
  * Mio Moov 330
  */
@@ -2102,13 +2109,6 @@ UNUSUAL_DEV(  0x4102, 0x1020, 0x0100,  0x0100,
 		"MP3 T10",
 		US_SC_DEVICE, US_PR_DEVICE, NULL,
 		US_FL_IGNORE_RESIDUE ),
-
-/* Reported by Sergey Pinaev <dfo@antex.ru> */
-UNUSUAL_DEV(  0x4102, 0x1059, 0x0000,  0x0000,
-               "iRiver",
-               "P7K",
-               US_SC_DEVICE, US_PR_DEVICE, NULL,
-               US_FL_MAX_SECTORS_64 ),
 
 /*
  * David Härdeman <david@2gen.com>

@@ -108,7 +108,7 @@ static int virtrng_probe(struct virtio_device *vdev)
 	return 0;
 }
 
-static void __devexit virtrng_remove(struct virtio_device *vdev)
+static void virtrng_remove(struct virtio_device *vdev)
 {
 	vdev->config->reset(vdev);
 	hwrng_unregister(&virtio_hwrng);

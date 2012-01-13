@@ -22,7 +22,11 @@ SECTIONS
   _text = .;
   _stext = .;
   __init_begin = .;
-  INIT_TEXT_SECTION(PAGE_SIZE)
+  .init.text : {
+	_sinittext = .;
+	INIT_TEXT
+	_einittext = .;
+  }
   . = ALIGN(PAGE_SIZE);
 
   .text      :
@@ -48,7 +52,8 @@ SECTIONS
   init.data : { INIT_DATA }
   .data    :
   {
-    INIT_TASK_DATA(KERNEL_STACK_SIZE)
+    . = ALIGN(KERNEL_STACK_SIZE);		/* init_task */
+    *(.data.init_task)
     . = ALIGN(KERNEL_STACK_SIZE);
     *(.data.init_irqstack)
     DATA_DATA
@@ -76,10 +81,19 @@ SECTIONS
   _edata  =  .;
   PROVIDE (edata = .);
   . = ALIGN(PAGE_SIZE);
-  __bss_start = .;
-  PROVIDE(_bss_start = .);
-  SBSS(0)
-  BSS(0)
+  .sbss      :
+  {
+   __bss_start = .;
+   PROVIDE(_bss_start = .);
+   *(.sbss)
+   *(.scommon)
+  }
+  .bss       :
+  {
+   *(.dynbss)
+   *(.bss)
+   *(COMMON)
+  }
   _end = .;
   PROVIDE (end = .);
 

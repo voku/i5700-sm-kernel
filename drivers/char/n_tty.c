@@ -290,8 +290,7 @@ static inline int is_continuation(unsigned char c, struct tty_struct *tty)
  *
  *	This is a helper function that handles one output character
  *	(including special characters like TAB, CR, LF, etc.),
- *	doing OPOST processing and putting the results in the
- *	tty driver's write buffer.
+ *	putting the results in the tty driver's write buffer.
  *
  *	Note that Linux currently ignores TABDLY, CRDLY, VTDLY, FFDLY
  *	and NLDLY.  They simply aren't relevant in the world today.
@@ -370,9 +369,8 @@ static int do_output_char(unsigned char c, struct tty_struct *tty, int space)
  *	@c: character (or partial unicode symbol)
  *	@tty: terminal device
  *
- *	Output one character with OPOST processing.
- *	Returns -1 when the output device is full and the character
- *	must be retried.
+ *	Perform OPOST processing.  Returns -1 when the output device is
+ *	full and the character must be retried.
  *
  *	Locking: output_lock to protect column state and space left
  *		 (also, this is called from n_tty_write under the
@@ -398,11 +396,8 @@ static int process_output(unsigned char c, struct tty_struct *tty)
 /**
  *	process_output_block		-	block post processor
  *	@tty: terminal device
- *	@buf: character buffer
- *	@nr: number of bytes to output
- *
- *	Output a block of characters with OPOST processing.
- *	Returns the number of characters output.
+ *	@inbuf: user buffer
+ *	@nr: number of bytes
  *
  *	This path is used to speed up block console writes, among other
  *	things when processing blocks of output data. It handles only
@@ -595,23 +590,33 @@ static void process_echoes(struct tty_struct *tty)
 				break;
 
 			default:
-				/*
-				 * If the op is not a special byte code,
-				 * it is a ctrl char tagged to be echoed
-				 * as "^X" (where X is the letter
-				 * representing the control char).
-				 * Note that we must ensure there is
-				 * enough space for the whole ctrl pair.
-				 *
-				 */
-				if (space < 2) {
-					no_space_left = 1;
-					break;
+				if (iscntrl(op)) {
+					if (L_ECHOCTL(tty)) {
+						/*
+						 * Ensure there is enough space
+						 * for the whole ctrl pair.
+						 */
+						if (space < 2) {
+							no_space_left = 1;
+							break;
+						}
+						tty_put_char(tty, '^');
+						tty_put_char(tty, op ^ 0100);
+						tty->column += 2;
+						space -= 2;
+					} else {
+						if (!space) {
+							no_space_left = 1;
+							break;
+						}
+						tty_put_char(tty, op);
+						space--;
+					}
 				}
-				tty_put_char(tty, '^');
-				tty_put_char(tty, op ^ 0100);
-				tty->column += 2;
-				space -= 2;
+				/*
+				 * If above falls through, this was an
+				 * undefined op.
+				 */
 				cp += 2;
 				nr -= 2;
 			}
@@ -619,18 +624,12 @@ static void process_echoes(struct tty_struct *tty)
 			if (no_space_left)
 				break;
 		} else {
-			if (O_OPOST(tty) &&
-			    !(test_bit(TTY_HW_COOK_OUT, &tty->flags))) {
-				int retval = do_output_char(c, tty, space);
-				if (retval < 0)
-					break;
-				space -= retval;
-			} else {
-				if (!space)
-					break;
-				tty_put_char(tty, c);
-				space -= 1;
-			}
+			int retval;
+
+			retval = do_output_char(c, tty, space);
+			if (retval < 0)
+				break;
+			space -= retval;
 			cp += 1;
 			nr -= 1;
 		}
@@ -818,8 +817,8 @@ static void echo_char_raw(unsigned char c, struct tty_struct *tty)
  *	Echo user input back onto the screen. This must be called only when
  *	L_ECHO(tty) is true. Called from the driver receive_buf path.
  *
- *	This variant tags control characters to be echoed as "^X"
- *	(where X is the letter representing the control char).
+ *	This variant tags control characters to be possibly echoed as
+ *	as "^X" (where X is the letter representing the control char).
  *
  *	Locking: echo_lock to protect the echo buffer
  */
@@ -832,7 +831,7 @@ static void echo_char(unsigned char c, struct tty_struct *tty)
 		add_echo_byte(ECHO_OP_START, tty);
 		add_echo_byte(ECHO_OP_START, tty);
 	} else {
-		if (L_ECHOCTL(tty) && iscntrl(c) && c != '\t')
+		if (iscntrl(c) && c != '\t')
 			add_echo_byte(ECHO_OP_START, tty);
 		add_echo_byte(c, tty);
 	}

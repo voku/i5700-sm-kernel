@@ -17,8 +17,6 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/debugfs.h>
-#include <linux/seq_file.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
@@ -185,10 +183,6 @@ static void send_init_stream(struct mmc_omap_host *host)
 
 	OMAP_HSMMC_WRITE(host->base, CON,
 		OMAP_HSMMC_READ(host->base, CON) & ~INIT_STREAM);
-
-	OMAP_HSMMC_WRITE(host->base, STAT, STAT_CLEAR);
-	OMAP_HSMMC_READ(host->base, STAT);
-
 	enable_irq(host->irq);
 }
 
@@ -905,59 +899,6 @@ static struct mmc_host_ops mmc_omap_ops = {
 	/* NYET -- enable_sdio_irq */
 };
 
-#ifdef CONFIG_DEBUG_FS
-
-static int mmc_regs_show(struct seq_file *s, void *data)
-{
-	struct mmc_host *mmc = s->private;
-	struct mmc_omap_host *host = mmc_priv(mmc);
-
-	seq_printf(s, "mmc%d regs:\n", mmc->index);
-
-	seq_printf(s, "SYSCONFIG:\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, SYSCONFIG));
-	seq_printf(s, "CON:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, CON));
-	seq_printf(s, "HCTL:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, HCTL));
-	seq_printf(s, "SYSCTL:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, SYSCTL));
-	seq_printf(s, "IE:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, IE));
-	seq_printf(s, "ISE:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, ISE));
-	seq_printf(s, "CAPA:\t\t0x%08x\n",
-			OMAP_HSMMC_READ(host->base, CAPA));
-	return 0;
-}
-
-static int mmc_regs_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, mmc_regs_show, inode->i_private);
-}
-
-static const struct file_operations mmc_regs_fops = {
-	.open           = mmc_regs_open,
-	.read           = seq_read,
-	.llseek         = seq_lseek,
-	.release        = single_release,
-};
-
-static void omap_mmc_debugfs(struct mmc_host *mmc)
-{
-	if (mmc->debugfs_root)
-		debugfs_create_file("regs", S_IRUSR, mmc->debugfs_root,
-			mmc, &mmc_regs_fops);
-}
-
-#else
-
-static void omap_mmc_debugfs(struct mmc_host *mmc)
-{
-}
-
-#endif
-
 static int __init omap_mmc_probe(struct platform_device *pdev)
 {
 	struct omap_mmc_platform_data *pdata = pdev->dev.platform_data;
@@ -1141,8 +1082,6 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 			goto err_cover_switch;
 	}
 
-	omap_mmc_debugfs(mmc);
-
 	return 0;
 
 err_cover_switch:
@@ -1310,6 +1249,7 @@ clk_en_err:
 #endif
 
 static struct platform_driver omap_mmc_driver = {
+	.probe		= omap_mmc_probe,
 	.remove		= omap_mmc_remove,
 	.suspend	= omap_mmc_suspend,
 	.resume		= omap_mmc_resume,
@@ -1322,7 +1262,7 @@ static struct platform_driver omap_mmc_driver = {
 static int __init omap_mmc_init(void)
 {
 	/* Register the MMC driver */
-	return platform_driver_probe(&omap_mmc_driver, omap_mmc_probe);
+	return platform_driver_register(&omap_mmc_driver);
 }
 
 static void __exit omap_mmc_cleanup(void)

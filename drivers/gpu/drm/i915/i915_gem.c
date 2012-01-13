@@ -662,7 +662,6 @@ i915_gem_create_mmap_offset(struct drm_gem_object *obj)
 	list->hash.key = list->file_offset_node->start;
 	if (drm_ht_insert_item(&mm->offset_hash, &list->hash)) {
 		DRM_ERROR("failed to add to map hash\n");
-		ret = -ENOMEM;
 		goto out_free_mm;
 	}
 
@@ -775,14 +774,6 @@ i915_gem_mmap_gtt_ioctl(struct drm_device *dev, void *data,
 	mutex_lock(&dev->struct_mutex);
 
 	obj_priv = obj->driver_private;
-
-	if (obj_priv->madv != I915_MADV_WILLNEED) {
-		DRM_ERROR("Attempting to mmap a purgeable buffer\n");
-		drm_gem_object_unreference(obj);
-		mutex_unlock(&dev->struct_mutex);
-		return -EINVAL;
-	}
-
 
 	if (!obj_priv->mmap_offset) {
 		ret = i915_gem_create_mmap_offset(obj);

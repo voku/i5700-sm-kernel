@@ -168,12 +168,6 @@ static int pn_send(struct sk_buff *skb, struct net_device *dev,
 		goto drop;
 	}
 
-	/* Broadcast sending is not implemented */
-	if (pn_addr(dst) == PNADDR_BROADCAST) {
-		err = -EOPNOTSUPP;
-		goto drop;
-	}
-
 	skb_reset_transport_header(skb);
 	WARN_ON(skb_headroom(skb) & 1); /* HW assumes word alignment */
 	skb_push(skb, sizeof(struct phonethdr));

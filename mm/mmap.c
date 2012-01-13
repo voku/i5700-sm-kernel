@@ -571,9 +571,9 @@ again:			remove_next = 1 + (end > next->vm_end);
 
 	/*
 	 * When changing only vma->vm_end, we don't really need
-	 * anon_vma lock.
+	 * anon_vma lock: but is that case worth optimizing out?
 	 */
-	if (vma->anon_vma && (insert || importer || start != vma->vm_start))
+	if (vma->anon_vma)
 		anon_vma = vma->anon_vma;
 	if (anon_vma) {
 		spin_lock(&anon_vma->lock);
@@ -657,6 +657,9 @@ again:			remove_next = 1 + (end > next->vm_end);
 	validate_mm(mm);
 }
 
+/* Flags that can be inherited from an existing mapping when merging */
+#define VM_MERGEABLE_FLAGS (VM_CAN_NONLINEAR)
+
 /*
  * If the vma has a ->close operation then the driver probably needs to release
  * per-vma resources, so we don't attempt to merge those.
@@ -664,8 +667,7 @@ again:			remove_next = 1 + (end > next->vm_end);
 static inline int is_mergeable_vma(struct vm_area_struct *vma,
 			struct file *file, unsigned long vm_flags)
 {
-	/* VM_CAN_NONLINEAR may get set later by f_op->mmap() */
-	if ((vma->vm_flags ^ vm_flags) & ~VM_CAN_NONLINEAR)
+	if ((vma->vm_flags ^ vm_flags) & ~VM_MERGEABLE_FLAGS)
 		return 0;
 	if (vma->vm_file != file)
 		return 0;
@@ -964,9 +966,11 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	vm_flags = calc_vm_prot_bits(prot) | calc_vm_flag_bits(flags) |
 			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC;
 
-	if (flags & MAP_LOCKED)
+	if (flags & MAP_LOCKED) {
 		if (!can_do_mlock())
 			return -EPERM;
+		vm_flags |= VM_LOCKED;
+	}
 
 	/* mlock MCL_FUTURE? */
 	if (vm_flags & VM_LOCKED) {
@@ -1189,20 +1193,20 @@ munmap_back:
 			goto unmap_and_free_vma;
 		if (vm_flags & VM_EXECUTABLE)
 			added_exe_file_vma(mm);
-
-		/* Can addr have changed??
-		 *
-		 * Answer: Yes, several device drivers can do it in their
-		 *         f_op->mmap method. -DaveM
-		 */
-		addr = vma->vm_start;
-		pgoff = vma->vm_pgoff;
-		vm_flags = vma->vm_flags;
 	} else if (vm_flags & VM_SHARED) {
 		error = shmem_zero_setup(vma);
 		if (error)
 			goto free_vma;
 	}
+
+	/* Can addr have changed??
+	 *
+	 * Answer: Yes, several device drivers can do it in their
+	 *         f_op->mmap method. -DaveM
+	 */
+	addr = vma->vm_start;
+	pgoff = vma->vm_pgoff;
+	vm_flags = vma->vm_flags;
 
 	if (vma_wants_writenotify(vma))
 		vma->vm_page_prot = vm_get_page_prot(vm_flags & ~VM_SHARED);

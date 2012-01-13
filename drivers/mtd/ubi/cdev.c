@@ -841,6 +841,7 @@ static long ubi_cdev_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
+		req.name[req.name_len] = '\0';
 		err = verify_mkvol_req(ubi, &req);
 		if (err)
 			break;

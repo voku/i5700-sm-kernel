@@ -103,9 +103,9 @@
 
 #define ACPI_MAX_REFERENCE_COUNT        0x1000
 
-/* Default page size for use in mapping memory for operation regions */
+/* Size of cached memory mapping for system memory operation region */
 
-#define ACPI_DEFAULT_PAGE_SIZE          4096	/* Must be power of 2 */
+#define ACPI_SYSMEM_REGION_WINDOW_SIZE  4096
 
 /* owner_id tracking. 8 entries allows for 255 owner_ids */
 

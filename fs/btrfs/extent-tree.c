@@ -2043,8 +2043,6 @@ int btrfs_check_metadata_free_space(struct btrfs_root *root)
 	/* get the space info for where the metadata will live */
 	alloc_target = btrfs_get_alloc_profile(root, 0);
 	meta_sinfo = __find_space_info(info, alloc_target);
-	if (!meta_sinfo)
-		goto alloc;
 
 again:
 	spin_lock(&meta_sinfo->lock);
@@ -2061,7 +2059,7 @@ again:
 		if (!meta_sinfo->full) {
 			meta_sinfo->force_alloc = 1;
 			spin_unlock(&meta_sinfo->lock);
-alloc:
+
 			trans = btrfs_start_transaction(root, 1);
 			if (!trans)
 				return -ENOMEM;
@@ -2069,10 +2067,6 @@ alloc:
 			ret = do_chunk_alloc(trans, root->fs_info->extent_root,
 					     2 * 1024 * 1024, alloc_target, 0);
 			btrfs_end_transaction(trans, root);
-			if (!meta_sinfo) {
-				meta_sinfo = __find_space_info(info,
-							       alloc_target);
-			}
 			goto again;
 		}
 		spin_unlock(&meta_sinfo->lock);
@@ -2108,9 +2102,6 @@ int btrfs_check_data_free_space(struct btrfs_root *root, struct inode *inode,
 	bytes = (bytes + root->sectorsize - 1) & ~((u64)root->sectorsize - 1);
 
 	data_sinfo = BTRFS_I(inode)->space_info;
-	if (!data_sinfo)
-		goto alloc;
-
 again:
 	/* make sure we have enough space to handle the data first */
 	spin_lock(&data_sinfo->lock);
@@ -2129,7 +2120,7 @@ again:
 
 			data_sinfo->force_alloc = 1;
 			spin_unlock(&data_sinfo->lock);
-alloc:
+
 			alloc_target = btrfs_get_alloc_profile(root, 1);
 			trans = btrfs_start_transaction(root, 1);
 			if (!trans)
@@ -2141,17 +2132,12 @@ alloc:
 			btrfs_end_transaction(trans, root);
 			if (ret)
 				return ret;
-
-			if (!data_sinfo) {
-				btrfs_set_inode_space_info(root, inode);
-				data_sinfo = BTRFS_I(inode)->space_info;
-			}
 			goto again;
 		}
 		spin_unlock(&data_sinfo->lock);
 
 		/* commit the current transaction and try again */
-		if (!committed && !root->fs_info->open_ioctl_trans) {
+		if (!committed) {
 			committed = 1;
 			trans = btrfs_join_transaction(root, 1);
 			if (!trans)
@@ -2683,14 +2669,6 @@ static int pin_down_bytes(struct btrfs_trans_handle *trans,
 	struct extent_buffer *buf;
 
 	if (is_data)
-		goto pinit;
-
-	/*
-	 * discard is sloooow, and so triggering discards on
-	 * individual btree blocks isn't a good plan.  Just
-	 * pin everything in discard mode.
-	 */
-	if (btrfs_test_opt(root, DISCARD))
 		goto pinit;
 
 	buf = btrfs_find_tree_block(root, bytenr, num_bytes);

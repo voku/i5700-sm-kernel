@@ -1035,6 +1035,11 @@ void free_hot_page(struct page *page)
 	free_hot_cold_page(page, 0);
 }
 	
+void free_cold_page(struct page *page)
+{
+	free_hot_cold_page(page, 1);
+}
+
 /*
  * split_page takes a non-compound higher-order page, and splits it into
  * n (1<<order) sub-pages: page[0..n]
@@ -1673,25 +1678,31 @@ EXPORT_SYMBOL(__alloc_pages_internal);
  */
 unsigned long __get_free_pages(gfp_t gfp_mask, unsigned int order)
 {
-	struct page *page;
-
-	/*
-	 * __get_free_pages() returns a 32-bit address, which cannot represent
-	 * a highmem page
-	 */
-	VM_BUG_ON((gfp_mask & __GFP_HIGHMEM) != 0);
-
+	struct page * page;
 	page = alloc_pages(gfp_mask, order);
 	if (!page)
 		return 0;
 	return (unsigned long) page_address(page);
 }
+
 EXPORT_SYMBOL(__get_free_pages);
 
 unsigned long get_zeroed_page(gfp_t gfp_mask)
 {
-	return __get_free_pages(gfp_mask | __GFP_ZERO, 0);
+	struct page * page;
+
+	/*
+	 * get_zeroed_page() returns a 32-bit address, which cannot represent
+	 * a highmem page
+	 */
+	VM_BUG_ON((gfp_mask & __GFP_HIGHMEM) != 0);
+
+	page = alloc_pages(gfp_mask | __GFP_ZERO, 0);
+	if (page)
+		return (unsigned long) page_address(page);
+	return 0;
 }
+
 EXPORT_SYMBOL(get_zeroed_page);
 
 void __pagevec_free(struct pagevec *pvec)
@@ -4706,16 +4717,13 @@ int set_migratetype_isolate(struct page *page)
 	struct zone *zone;
 	unsigned long flags;
 	int ret = -EBUSY;
-	int zone_idx;
 
 	zone = page_zone(page);
-	zone_idx = zone_idx(zone);
 	spin_lock_irqsave(&zone->lock, flags);
 	/*
 	 * In future, more migrate types will be able to be isolation target.
 	 */
-	if (get_pageblock_migratetype(page) != MIGRATE_MOVABLE &&
-	    zone_idx != ZONE_MOVABLE)
+	if (get_pageblock_migratetype(page) != MIGRATE_MOVABLE)
 		goto out;
 	set_pageblock_migratetype(page, MIGRATE_ISOLATE);
 	move_freepages_block(zone, page, MIGRATE_ISOLATE);

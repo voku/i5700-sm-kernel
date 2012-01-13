@@ -279,8 +279,7 @@ struct acpi_device_wakeup {
 /* Device */
 
 struct acpi_device {
-	int device_type;
-	acpi_handle handle;		/* no handle for fixed hardware */
+	acpi_handle handle;
 	struct acpi_device *parent;
 	struct list_head children;
 	struct list_head node;
@@ -369,6 +368,7 @@ void acpi_remove_dir(struct acpi_device *);
 /*
  * Bind physical devices with ACPI devices
  */
+#include <linux/device.h>
 struct acpi_bus_type {
 	struct list_head list;
 	struct bus_type *bus;

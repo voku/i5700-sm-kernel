@@ -192,10 +192,11 @@
 #define F_QUEUE_MAP_CPU (1<<14)	/* queue map mirrors smp_processor_id() */
 
 /* Thread control flag bits */
-#define T_STOP        (1<<0)	/* Stop run */
-#define T_RUN         (1<<1)	/* Start run */
-#define T_REMDEVALL   (1<<2)	/* Remove all devs */
-#define T_REMDEV      (1<<3)	/* Remove one dev */
+#define T_TERMINATE   (1<<0)
+#define T_STOP        (1<<1)	/* Stop run */
+#define T_RUN         (1<<2)	/* Start run */
+#define T_REMDEVALL   (1<<3)	/* Remove all devs */
+#define T_REMDEV      (1<<4)	/* Remove one dev */
 
 /* If lock -- can be removed after some work */
 #define   if_lock(t)           spin_lock(&(t->if_lock));
@@ -329,7 +330,6 @@ struct pktgen_dev {
 	__u32 cur_src_mac_offset;
 	__be32 cur_saddr;
 	__be32 cur_daddr;
-	__u16 ip_id;
 	__u16 cur_udp_dst;
 	__u16 cur_udp_src;
 	__u16 cur_queue_map;
@@ -2186,7 +2186,7 @@ static void set_cur_queue_map(struct pktgen_dev *pkt_dev)
 	if (pkt_dev->flags & F_QUEUE_MAP_CPU)
 		pkt_dev->cur_queue_map = smp_processor_id();
 
-	else if (pkt_dev->queue_map_min <= pkt_dev->queue_map_max) {
+	else if (pkt_dev->queue_map_min < pkt_dev->queue_map_max) {
 		__u16 t;
 		if (pkt_dev->flags & F_QUEUE_MAP_RND) {
 			t = random32() %
@@ -2603,8 +2603,6 @@ static struct sk_buff *fill_packet_ipv4(struct net_device *odev,
 	iph->protocol = IPPROTO_UDP;	/* UDP */
 	iph->saddr = pkt_dev->cur_saddr;
 	iph->daddr = pkt_dev->cur_daddr;
-	iph->id = htons(pkt_dev->ip_id);
-	pkt_dev->ip_id++;
 	iph->frag_off = 0;
 	iplen = 20 + 8 + datalen;
 	iph->tot_len = htons(iplen);
@@ -2616,26 +2614,24 @@ static struct sk_buff *fill_packet_ipv4(struct net_device *odev,
 	skb->dev = odev;
 	skb->pkt_type = PACKET_HOST;
 
-	if (pkt_dev->nfrags <= 0) {
+	if (pkt_dev->nfrags <= 0)
 		pgh = (struct pktgen_hdr *)skb_put(skb, datalen);
-		memset(pgh + 1, 0, datalen - sizeof(struct pktgen_hdr));
-	} else {
+	else {
 		int frags = pkt_dev->nfrags;
-		int i, len;
+		int i;
 
 		pgh = (struct pktgen_hdr *)(((char *)(udph)) + 8);
 
 		if (frags > MAX_SKB_FRAGS)
 			frags = MAX_SKB_FRAGS;
 		if (datalen > frags * PAGE_SIZE) {
-			len = datalen - frags * PAGE_SIZE;
-			memset(skb_put(skb, len), 0, len);
+			skb_put(skb, datalen - frags * PAGE_SIZE);
 			datalen = frags * PAGE_SIZE;
 		}
 
 		i = 0;
 		while (datalen > 0) {
-			struct page *page = alloc_pages(GFP_KERNEL | __GFP_ZERO, 0);
+			struct page *page = alloc_pages(GFP_KERNEL, 0);
 			skb_shinfo(skb)->frags[i].page = page;
 			skb_shinfo(skb)->frags[i].page_offset = 0;
 			skb_shinfo(skb)->frags[i].size =

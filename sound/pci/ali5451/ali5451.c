@@ -1032,7 +1032,7 @@ static void snd_ali_free_voice(struct snd_ali * codec,
 	void *private_data;
 
 	snd_ali_printk("free_voice: channel=%d\n",pvoice->number);
-	if (!pvoice->use)
+	if (pvoice == NULL || !pvoice->use)
 		return;
 	snd_ali_clear_voices(codec, pvoice->number, pvoice->number);
 	spin_lock_irq(&codec->voice_alloc);

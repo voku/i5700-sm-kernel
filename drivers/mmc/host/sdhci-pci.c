@@ -83,8 +83,7 @@ static int ricoh_probe(struct sdhci_pci_chip *chip)
 	if (chip->pdev->subsystem_vendor == PCI_VENDOR_ID_IBM)
 		chip->quirks |= SDHCI_QUIRK_CLOCK_BEFORE_RESET;
 
-	if (chip->pdev->subsystem_vendor == PCI_VENDOR_ID_SAMSUNG ||
-	    chip->pdev->subsystem_vendor == PCI_VENDOR_ID_SONY)
+	if (chip->pdev->subsystem_vendor == PCI_VENDOR_ID_SAMSUNG)
 		chip->quirks |= SDHCI_QUIRK_NO_CARD_NO_RESET;
 
 	return 0;

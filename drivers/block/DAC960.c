@@ -6561,7 +6561,7 @@ static int DAC960_ProcWriteUserCommand(struct file *file,
   if (copy_from_user(CommandBuffer, Buffer, Count)) return -EFAULT;
   CommandBuffer[Count] = '\0';
   Length = strlen(CommandBuffer);
-  if (Length > 0 && CommandBuffer[Length-1] == '\n')
+  if (CommandBuffer[Length-1] == '\n')
     CommandBuffer[--Length] = '\0';
   if (Controller->FirmwareType == DAC960_V1_Controller)
     return (DAC960_V1_ExecuteUserCommand(Controller, CommandBuffer)
@@ -7209,7 +7209,7 @@ static struct pci_driver DAC960_pci_driver = {
 	.remove		= DAC960_Remove,
 };
 
-static int __init DAC960_init_module(void)
+static int DAC960_init_module(void)
 {
 	int ret;
 
@@ -7221,7 +7221,7 @@ static int __init DAC960_init_module(void)
 	return ret;
 }
 
-static void __exit DAC960_cleanup_module(void)
+static void DAC960_cleanup_module(void)
 {
 	int i;
 

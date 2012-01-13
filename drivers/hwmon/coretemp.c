@@ -157,26 +157,17 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 	/* The 100C is default for both mobile and non mobile CPUs */
 
 	int tjmax = 100000;
-	int tjmax_ee = 85000;
-	int usemsr_ee = 1;
+	int ismobile = 1;
 	int err;
 	u32 eax, edx;
 
 	/* Early chips have no MSR for TjMax */
 
 	if ((c->x86_model == 0xf) && (c->x86_mask < 4)) {
-		usemsr_ee = 0;
+		ismobile = 0;
 	}
 
-	/* Atoms seems to have TjMax at 90C */
-
-	if (c->x86_model == 0x1c) {
-		usemsr_ee = 0;
-		tjmax = 90000;
-	}
-
-	if ((c->x86_model > 0xe) && (usemsr_ee)) {
-		u8 platform_id;
+	if ((c->x86_model > 0xe) && (ismobile)) {
 
 		/* Now we can detect the mobile CPU using Intel provided table
 		   http://softwarecommunity.intel.com/Wiki/Mobility/720.htm
@@ -188,29 +179,13 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 			dev_warn(dev,
 				 "Unable to access MSR 0x17, assuming desktop"
 				 " CPU\n");
-			usemsr_ee = 0;
-		} else if (c->x86_model < 0x17 && !(eax & 0x10000000)) {
-			/* Trust bit 28 up to Penryn, I could not find any
-			   documentation on that; if you happen to know
-			   someone at Intel please ask */
-			usemsr_ee = 0;
-		} else {
-			/* Platform ID bits 52:50 (EDX starts at bit 32) */
-			platform_id = (edx >> 18) & 0x7;
-
-			/* Mobile Penryn CPU seems to be platform ID 7 or 5
-			  (guesswork) */
-			if ((c->x86_model == 0x17) &&
-			    ((platform_id == 5) || (platform_id == 7))) {
-				/* If MSR EE bit is set, set it to 90 degrees C,
-				   otherwise 105 degrees C */
-				tjmax_ee = 90000;
-				tjmax = 105000;
-			}
+			ismobile = 0;
+		} else if (!(eax & 0x10000000)) {
+			ismobile = 0;
 		}
 	}
 
-	if (usemsr_ee) {
+	if (ismobile) {
 
 		err = rdmsr_safe_on_cpu(id, 0xee, &eax, &edx);
 		if (err) {
@@ -218,11 +193,9 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 				 "Unable to access MSR 0xEE, for Tjmax, left"
 				 " at default");
 		} else if (eax & 0x40000000) {
-			tjmax = tjmax_ee;
+			tjmax = 85000;
 		}
-	/* if we dont use msr EE it means we are desktop CPU (with exeception
-	   of Atom) */
-	} else if (tjmax == 100000) {
+	} else {
 		dev_warn(dev, "Using relative temperature scale!\n");
 	}
 
@@ -275,9 +248,9 @@ static int __devinit coretemp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 
 	/* read the still undocumented IA32_TEMPERATURE_TARGET it exists
-	   on older CPUs but not in this register, Atoms don't have it either */
+	   on older CPUs but not in this register */
 
-	if ((c->x86_model > 0xe) && (c->x86_model != 0x1c)) {
+	if (c->x86_model > 0xe) {
 		err = rdmsr_safe_on_cpu(data->id, 0x1a2, &eax, &edx);
 		if (err) {
 			dev_warn(&pdev->dev, "Unable to read"
@@ -440,15 +413,11 @@ static int __init coretemp_init(void)
 	for_each_online_cpu(i) {
 		struct cpuinfo_x86 *c = &cpu_data(i);
 
-		/* check if family 6, models 0xe (Pentium M DC),
-		  0xf (Core 2 DC 65nm), 0x16 (Core 2 SC 65nm),
-		  0x17 (Penryn 45nm), 0x1a (Nehalem), 0x1c (Atom),
-		  0x1e (Lynnfield) */
+		/* check if family 6, models 0xe, 0xf, 0x16, 0x17, 0x1A */
 		if ((c->cpuid_level < 0) || (c->x86 != 0x6) ||
 		    !((c->x86_model == 0xe) || (c->x86_model == 0xf) ||
 			(c->x86_model == 0x16) || (c->x86_model == 0x17) ||
-			(c->x86_model == 0x1a) || (c->x86_model == 0x1c) ||
-			(c->x86_model == 0x1e))) {
+			(c->x86_model == 0x1A))) {
 
 			/* supported CPU not found, but report the unknown
 			   family 6 CPU */

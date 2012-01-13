@@ -851,6 +851,7 @@ static int __exit flctl_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver flctl_driver = {
+	.probe		= flctl_probe,
 	.remove		= flctl_remove,
 	.driver = {
 		.name	= "sh_flctl",
@@ -860,7 +861,7 @@ static struct platform_driver flctl_driver = {
 
 static int __init flctl_nand_init(void)
 {
-	return platform_driver_probe(&flctl_driver, flctl_probe);
+	return platform_driver_register(&flctl_driver);
 }
 
 static void __exit flctl_nand_cleanup(void)

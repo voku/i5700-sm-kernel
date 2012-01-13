@@ -867,11 +867,6 @@ static struct snd_kcontrol_new usb_feature_unit_ctl = {
  * build a feature control
  */
 
-static size_t append_ctl_name(struct snd_kcontrol *kctl, const char *str)
-{
-	return strlcat(kctl->id.name, str, sizeof(kctl->id.name));
-}
-
 static void build_feature_ctl(struct mixer_build *state, unsigned char *desc,
 			      unsigned int ctl_mask, int control,
 			      struct usb_audio_term *iterm, int unitid)
@@ -952,13 +947,13 @@ static void build_feature_ctl(struct mixer_build *state, unsigned char *desc,
 		 */
 		if (! mapped_name && ! (state->oterm.type >> 16)) {
 			if ((state->oterm.type & 0xff00) == 0x0100) {
-				len = append_ctl_name(kctl, " Capture");
+				len = strlcat(kctl->id.name, " Capture", sizeof(kctl->id.name));
 			} else {
-				len = append_ctl_name(kctl, " Playback");
+				len = strlcat(kctl->id.name + len, " Playback", sizeof(kctl->id.name));
 			}
 		}
-		append_ctl_name(kctl, control == USB_FEATURE_MUTE ?
-				" Switch" : " Volume");
+		strlcat(kctl->id.name + len, control == USB_FEATURE_MUTE ? " Switch" : " Volume",
+			sizeof(kctl->id.name));
 		if (control == USB_FEATURE_VOLUME) {
 			kctl->tlv.c = mixer_vol_tlv;
 			kctl->vd[0].access |= 
@@ -1025,15 +1020,6 @@ static int parse_audio_feature_unit(struct mixer_build *state, int unitid, unsig
 	channels = (ftr[0] - 7) / csize - 1;
 
 	master_bits = snd_usb_combine_bytes(ftr + 6, csize);
-	/* master configuration quirks */
-	switch (state->chip->usb_id) {
-	case USB_ID(0x08bb, 0x2702):
-		snd_printk(KERN_INFO
-			   "usbmixer: master volume quirk for PCM2702 chip\n");
-		/* disable non-functional volume control */
-		master_bits &= ~(1 << (USB_FEATURE_VOLUME - 1));
-		break;
-	}
 	if (channels > 0)
 		first_ch_bits = snd_usb_combine_bytes(ftr + 6 + csize, csize);
 	else
@@ -1111,7 +1097,7 @@ static void build_mixer_unit_ctl(struct mixer_build *state, unsigned char *desc,
 		len = get_term_name(state, iterm, kctl->id.name, sizeof(kctl->id.name), 0);
 	if (! len)
 		len = sprintf(kctl->id.name, "Mixer Source %d", in_ch + 1);
-	append_ctl_name(kctl, " Volume");
+	strlcat(kctl->id.name + len, " Volume", sizeof(kctl->id.name));
 
 	snd_printdd(KERN_INFO "[%d] MU [%s] ch = %d, val = %d/%d\n",
 		    cval->id, kctl->id.name, cval->channels, cval->min, cval->max);
@@ -1368,8 +1354,8 @@ static int build_audio_procunit(struct mixer_build *state, int unitid, unsigned 
 			if (! len)
 				strlcpy(kctl->id.name, name, sizeof(kctl->id.name));
 		}
-		append_ctl_name(kctl, " ");
-		append_ctl_name(kctl, valinfo->suffix);
+		strlcat(kctl->id.name, " ", sizeof(kctl->id.name));
+		strlcat(kctl->id.name, valinfo->suffix, sizeof(kctl->id.name));
 
 		snd_printdd(KERN_INFO "[%d] PU [%s] ch = %d, val = %d/%d\n",
 			    cval->id, kctl->id.name, cval->channels, cval->min, cval->max);
@@ -1578,9 +1564,9 @@ static int parse_audio_selector_unit(struct mixer_build *state, int unitid, unsi
 			strlcpy(kctl->id.name, "USB", sizeof(kctl->id.name));
 
 		if ((state->oterm.type & 0xff00) == 0x0100)
-			append_ctl_name(kctl, " Capture Source");
+			strlcat(kctl->id.name, " Capture Source", sizeof(kctl->id.name));
 		else
-			append_ctl_name(kctl, " Playback Source");
+			strlcat(kctl->id.name, " Playback Source", sizeof(kctl->id.name));
 	}
 
 	snd_printdd(KERN_INFO "[%d] SU [%s] items = %d\n",

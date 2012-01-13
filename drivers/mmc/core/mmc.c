@@ -180,11 +180,11 @@ static int mmc_read_ext_csd(struct mmc_card *card)
 
 	err = mmc_send_ext_csd(card, ext_csd);
 	if (err) {
-		/* If the host or the card can't do the switch,
-		 * fail more gracefully. */
-		if ((err != -EINVAL)
-		 && (err != -ENOSYS)
-		 && (err != -EFAULT))
+		/*
+		 * We all hosts that cannot perform the command
+		 * to fail more gracefully
+		 */
+		if (err != -EINVAL)
 			goto out;
 
 		/*
@@ -408,17 +408,12 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		(host->caps & MMC_CAP_MMC_HIGHSPEED)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 			EXT_CSD_HS_TIMING, 1);
-		if (err && err != -EBADMSG)
+		if (err)
 			goto free_card;
 
-		if (err) {
-			printk(KERN_WARNING "%s: switch to highspeed failed\n",
-			       mmc_hostname(card->host));
-			err = 0;
-		} else {
-			mmc_card_set_highspeed(card);
-			mmc_set_timing(card->host, MMC_TIMING_MMC_HS);
-		}
+		mmc_card_set_highspeed(card);
+
+		mmc_set_timing(card->host, MMC_TIMING_MMC_HS);
 	}
 
 	/*
@@ -453,17 +448,10 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_BUS_WIDTH, ext_csd_bit);
 
-		if (err && err != -EBADMSG)
+		if (err)
 			goto free_card;
 
-		if (err) {
-			printk(KERN_WARNING "%s: switch to bus width %d "
-			       "failed\n", mmc_hostname(card->host),
-			       1 << bus_width);
-			err = 0;
-		} else {
-			mmc_set_bus_width(card->host, bus_width);
-		}
+		mmc_set_bus_width(card->host, bus_width);
 	}
 
 	if (!oldcard)

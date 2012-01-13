@@ -351,6 +351,7 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
 	 * block, for some throttling. This happens by accident, because
 	 * swap_backing_dev_info is bust: it doesn't reflect the
 	 * congestion state of the swapdevs.  Easy to fix, if needed.
+	 * See swapfile.c:page_queue_congested().
 	 */
 	if (!is_page_cache_freeable(page))
 		return PAGE_KEEP;
@@ -520,7 +521,7 @@ redo:
 		 * unevictable page on [in]active list.
 		 * We know how to handle that.
 		 */
-		lru = active + page_lru_base_type(page);
+		lru = active + page_is_file_cache(page);
 		lru_cache_add_lru(page, lru);
 	} else {
 		/*
@@ -529,16 +530,6 @@ redo:
 		 */
 		lru = LRU_UNEVICTABLE;
 		add_page_to_unevictable_list(page);
-		/*
-		 * When racing with an mlock clearing (page is
-		 * unlocked), make sure that if the other thread does
-		 * not observe our setting of PG_lru and fails
-		 * isolation, we see PG_mlocked cleared below and move
-		 * the page back to the evictable list.
-		 *
-		 * The other side is TestClearPageMlocked().
-		 */
-		smp_mb();
 	}
 
 	/*
@@ -988,7 +979,7 @@ static unsigned long clear_active_flags(struct list_head *page_list,
 	struct page *page;
 
 	list_for_each_entry(page, page_list, lru) {
-		lru = page_lru_base_type(page);
+		lru = page_is_file_cache(page);
 		if (PageActive(page)) {
 			lru += LRU_ACTIVE;
 			ClearPageActive(page);
@@ -1087,20 +1078,6 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 		nr_taken = sc->isolate_pages(sc->swap_cluster_max,
 			     &page_list, &nr_scan, sc->order, mode,
 				zone, sc->mem_cgroup, 0, file);
-
-		if (scanning_global_lru(sc)) {
-			zone->pages_scanned += nr_scan;
-			if (current_is_kswapd())
-				__count_zone_vm_events(PGSCAN_KSWAPD, zone,
-						       nr_scan);
-			else
-				__count_zone_vm_events(PGSCAN_DIRECT, zone,
-						       nr_scan);
-		}
-
-		if (nr_taken == 0)
-			goto done;
-
 		nr_active = clear_active_flags(&page_list, count);
 		__count_vm_events(PGDEACTIVATE, nr_active);
 
@@ -1113,6 +1090,8 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 		__mod_zone_page_state(zone, NR_INACTIVE_ANON,
 						-count[LRU_INACTIVE_ANON]);
 
+		if (scanning_global_lru(sc))
+			zone->pages_scanned += nr_scan;
 
 		reclaim_stat->recent_scanned[0] += count[LRU_INACTIVE_ANON];
 		reclaim_stat->recent_scanned[0] += count[LRU_ACTIVE_ANON];
@@ -1146,11 +1125,17 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 		}
 
 		nr_reclaimed += nr_freed;
-
 		local_irq_disable();
-		if (current_is_kswapd())
+		if (current_is_kswapd()) {
+			__count_zone_vm_events(PGSCAN_KSWAPD, zone, nr_scan);
 			__count_vm_events(KSWAPD_STEAL, nr_freed);
+		} else if (scanning_global_lru(sc))
+			__count_zone_vm_events(PGSCAN_DIRECT, zone, nr_scan);
+
 		__count_zone_vm_events(PGSTEAL, zone, nr_freed);
+
+		if (nr_taken == 0)
+			goto done;
 
 		spin_lock(&zone->lru_lock);
 		/*
@@ -1170,8 +1155,8 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 			SetPageLRU(page);
 			lru = page_lru(page);
 			add_page_to_lru_list(zone, page, lru);
-			if (is_active_lru(lru)) {
-				int file = !!is_file_lru(lru);
+			if (PageActive(page)) {
+				int file = !!page_is_file_cache(page);
 				reclaim_stat->recent_rotated[file]++;
 			}
 			if (!pagevec_add(&pvec, page)) {
@@ -1181,9 +1166,9 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 			}
 		}
   	} while (nr_scanned < max_scan);
-
+	spin_unlock(&zone->lru_lock);
 done:
-	spin_unlock_irq(&zone->lru_lock);
+	local_irq_enable();
 	pagevec_release(&pvec);
 	return nr_reclaimed;
 }
@@ -2462,7 +2447,7 @@ static void check_move_unevictable_page(struct page *page, struct zone *zone)
 retry:
 	ClearPageUnevictable(page);
 	if (page_evictable(page, NULL)) {
-		enum lru_list l = page_lru_base_type(page);
+		enum lru_list l = LRU_INACTIVE_ANON + page_is_file_cache(page);
 
 		__dec_zone_state(zone, NR_UNEVICTABLE);
 		list_move(&page->lru, &zone->lru[l].list);

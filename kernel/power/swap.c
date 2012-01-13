@@ -317,6 +317,7 @@ static int save_image(struct swap_map_handle *handle,
 {
 	unsigned int m;
 	int ret;
+	int error = 0;
 	int nr_pages;
 	int err2;
 	struct bio *bio;
@@ -331,27 +332,26 @@ static int save_image(struct swap_map_handle *handle,
 	nr_pages = 0;
 	bio = NULL;
 	do_gettimeofday(&start);
-	while (1) {
+	do {
 		ret = snapshot_read_next(snapshot, PAGE_SIZE);
-		if (ret <= 0)
-			break;
-		ret = swap_write_page(handle, data_of(*snapshot), &bio);
-		if (ret)
-			break;
-		if (!(nr_pages % m))
-			printk("\b\b\b\b%3d%%", nr_pages / m);
-		nr_pages++;
-	}
+		if (ret > 0) {
+			error = swap_write_page(handle, data_of(*snapshot),
+						&bio);
+			if (error)
+				break;
+			if (!(nr_pages % m))
+				printk("\b\b\b\b%3d%%", nr_pages / m);
+			nr_pages++;
+		}
+	} while (ret > 0);
 	err2 = wait_on_bio_chain(&bio);
 	do_gettimeofday(&stop);
-	if (!ret)
-		ret = err2;
-	if (!ret)
+	if (!error)
+		error = err2;
+	if (!error)
 		printk("\b\b\b\bdone\n");
-	else
-		printk("\n");
 	swsusp_show_speed(&start, &stop, nr_to_write, "Wrote");
-	return ret;
+	return error;
 }
 
 /**
@@ -539,8 +539,7 @@ static int load_image(struct swap_map_handle *handle,
 		snapshot_write_finalize(snapshot);
 		if (!snapshot_image_loaded(snapshot))
 			error = -ENODATA;
-	} else
-		printk("\n");
+	}
 	swsusp_show_speed(&start, &stop, nr_to_read, "Read");
 	return error;
 }

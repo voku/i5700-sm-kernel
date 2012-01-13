@@ -221,9 +221,7 @@ static void mddev_put(mddev_t *mddev)
 	if (!atomic_dec_and_lock(&mddev->active, &all_mddevs_lock))
 		return;
 	if (!mddev->raid_disks && list_empty(&mddev->disks) &&
-	    mddev->ctime == 0 && !mddev->hold_active) {
-		/* Array is not configured at all, and not held active,
-		 * so destroy it */
+	    !mddev->hold_active) {
 		list_del(&mddev->all_mddevs);
 		if (mddev->gendisk) {
 			/* we did a probe so need to clean up.
@@ -880,14 +878,6 @@ static int super_90_validate(mddev_t *mddev, mdk_rdev_t *rdev)
 			    desc->raid_disk < mddev->raid_disks */) {
 			set_bit(In_sync, &rdev->flags);
 			rdev->raid_disk = desc->raid_disk;
-		} else if (desc->state & (1<<MD_DISK_ACTIVE)) {
-			/* active but not in sync implies recovery up to
-			 * reshape position.  We don't know exactly where
-			 * that is, so set to zero for now */
-			if (mddev->minor_version >= 91) {
-				rdev->recovery_offset = 0;
-				rdev->raid_disk = desc->raid_disk;
-			}
 		}
 		if (desc->state & (1<<MD_DISK_WRITEMOSTLY))
 			set_bit(WriteMostly, &rdev->flags);
@@ -976,19 +966,8 @@ static void super_90_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 	list_for_each_entry(rdev2, &mddev->disks, same_set) {
 		mdp_disk_t *d;
 		int desc_nr;
-		int is_active = test_bit(In_sync, &rdev2->flags);
-
-		if (rdev2->raid_disk >= 0 &&
-		    sb->minor_version >= 91)
-			/* we have nowhere to store the recovery_offset,
-			 * but if it is not below the reshape_position,
-			 * we can piggy-back on that.
-			 */
-			is_active = 1;
-		if (rdev2->raid_disk < 0 ||
-		    test_bit(Faulty, &rdev2->flags))
-			is_active = 0;
-		if (is_active)
+		if (rdev2->raid_disk >= 0 && test_bit(In_sync, &rdev2->flags)
+		    && !test_bit(Faulty, &rdev2->flags))
 			desc_nr = rdev2->raid_disk;
 		else
 			desc_nr = next_spare++;
@@ -998,16 +977,16 @@ static void super_90_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 		d->number = rdev2->desc_nr;
 		d->major = MAJOR(rdev2->bdev->bd_dev);
 		d->minor = MINOR(rdev2->bdev->bd_dev);
-		if (is_active)
+		if (rdev2->raid_disk >= 0 && test_bit(In_sync, &rdev2->flags)
+		    && !test_bit(Faulty, &rdev2->flags))
 			d->raid_disk = rdev2->raid_disk;
 		else
 			d->raid_disk = rdev2->desc_nr; /* compatibility */
 		if (test_bit(Faulty, &rdev2->flags))
 			d->state = (1<<MD_DISK_FAULTY);
-		else if (is_active) {
+		else if (test_bit(In_sync, &rdev2->flags)) {
 			d->state = (1<<MD_DISK_ACTIVE);
-			if (test_bit(In_sync, &rdev2->flags))
-				d->state |= (1<<MD_DISK_SYNC);
+			d->state |= (1<<MD_DISK_SYNC);
 			active++;
 			working++;
 		} else {
@@ -3865,7 +3844,7 @@ static int do_md_run(mddev_t * mddev)
 	mddev->barriers_work = 1;
 	mddev->ok_start_degraded = start_dirty_degraded;
 
-	if (start_readonly && mddev->ro == 0)
+	if (start_readonly)
 		mddev->ro = 2; /* read-only, but switch on first write */
 
 	err = mddev->pers->run(mddev);
@@ -4758,10 +4737,6 @@ static int set_array_info(mddev_t * mddev, mdu_array_info_t *info)
 		mddev->minor_version = info->minor_version;
 		mddev->patch_version = info->patch_version;
 		mddev->persistent = !info->not_persistent;
-		/* ensure mddev_put doesn't delete this now that there
-		 * is some minimal configuration.
-		 */
-		mddev->ctime         = get_seconds();
 		return 0;
 	}
 	mddev->major_version = MD_MAJOR_VERSION;

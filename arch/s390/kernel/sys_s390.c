@@ -29,6 +29,7 @@
 #include <linux/personality.h>
 #include <linux/unistd.h>
 #include <linux/ipc.h>
+#include <linux/syscalls.h>
 #include <asm/uaccess.h>
 #include "entry.h"
 

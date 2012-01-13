@@ -578,13 +578,7 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing)
  */
 static void mmc_power_up(struct mmc_host *host)
 {
-	int bit;
-
-	/* If ocr is set, we use it */
-	if (host->ocr)
-		bit = ffs(host->ocr) - 1;
-	else
-		bit = fls(host->ocr_avail) - 1;
+	int bit = fls(host->ocr_avail) - 1;
 
 	host->ios.vdd = bit;
 	if (mmc_host_is_spi(host)) {
@@ -915,8 +909,6 @@ void mmc_stop_host(struct mmc_host *host)
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
 		mmc_release_host(host);
-		mmc_bus_put(host);
-		return;
 	}
 	mmc_bus_put(host);
 

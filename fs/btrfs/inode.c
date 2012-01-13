@@ -536,7 +536,7 @@ static noinline int submit_compressed_extents(struct inode *inode,
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct extent_map_tree *em_tree = &BTRFS_I(inode)->extent_tree;
 	struct extent_io_tree *io_tree;
-	int ret = 0;
+	int ret;
 
 	if (list_empty(&async_cow->extents))
 		return 0;
@@ -550,7 +550,6 @@ static noinline int submit_compressed_extents(struct inode *inode,
 
 		io_tree = &BTRFS_I(inode)->io_tree;
 
-retry:
 		/* did the compression code fall back to uncompressed IO? */
 		if (!async_extent->pages) {
 			int page_started = 0;
@@ -561,11 +560,11 @@ retry:
 				    async_extent->ram_size - 1, GFP_NOFS);
 
 			/* allocate blocks */
-			ret = cow_file_range(inode, async_cow->locked_page,
-					     async_extent->start,
-					     async_extent->start +
-					     async_extent->ram_size - 1,
-					     &page_started, &nr_written, 0);
+			cow_file_range(inode, async_cow->locked_page,
+				       async_extent->start,
+				       async_extent->start +
+				       async_extent->ram_size - 1,
+				       &page_started, &nr_written, 0);
 
 			/*
 			 * if page_started, cow_file_range inserted an
@@ -573,7 +572,7 @@ retry:
 			 * and IO for us.  Otherwise, we need to submit
 			 * all those pages down to the drive.
 			 */
-			if (!page_started && !ret)
+			if (!page_started)
 				extent_write_locked_range(io_tree,
 						  inode, async_extent->start,
 						  async_extent->start +
@@ -601,21 +600,7 @@ retry:
 					   async_extent->compressed_size,
 					   0, alloc_hint,
 					   (u64)-1, &ins, 1);
-		if (ret) {
-			int i;
-			for (i = 0; i < async_extent->nr_pages; i++) {
-				WARN_ON(async_extent->pages[i]->mapping);
-				page_cache_release(async_extent->pages[i]);
-			}
-			kfree(async_extent->pages);
-			async_extent->nr_pages = 0;
-			async_extent->pages = NULL;
-			unlock_extent(io_tree, async_extent->start,
-				      async_extent->start +
-				      async_extent->ram_size - 1, GFP_NOFS);
-			goto retry;
-		}
-
+		BUG_ON(ret);
 		em = alloc_extent_map(GFP_NOFS);
 		em->start = async_extent->start;
 		em->len = async_extent->ram_size;
@@ -1014,7 +999,6 @@ next_slot:
 
 		if (found_key.offset > cur_offset) {
 			extent_end = found_key.offset;
-			extent_type = 0;
 			goto out_check;
 		}
 
