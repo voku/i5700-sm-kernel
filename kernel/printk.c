@@ -253,13 +253,6 @@ static int log_buf_get_len(void)
 	return logged_chars;
 }
 
-/*
- * Clears the ring-buffer
- */
-void log_buf_clear(void)
-{
-	logged_chars = 0;
-}
 
 /*
  * Clears the ring-buffer

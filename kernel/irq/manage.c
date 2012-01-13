@@ -715,7 +715,7 @@ int request_irq(unsigned int irq, irq_handler_t handler,
 
 	action->handler = handler;
 	action->flags = irqflags;
-	cpus_clear(action->mask);
+	//cpus_clear(action->mask);
 	action->name = devname;
 	action->next = NULL;
 	action->dev_id = dev_id;

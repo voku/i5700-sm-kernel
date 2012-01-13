@@ -20,8 +20,7 @@ PRODUCT=r880
 case "$PRODUCT" in
 
     r880)		
-                MODULES_FAST="g2d g3d mfc jpeg cmm rotator"
-                MODULES_STABLE="vibetonz btgpio camera dpram multipdp param pp rfs wlan xsr compcache"
+                MODULES="g2d g3d mfc jpeg cmm rotator vibetonz btgpio camera dpram multipdp param pp rfs xsr"
                 KERNEL_DEF_CONFIG=spica_android_defconfig
                 ;;
     
@@ -55,55 +54,55 @@ prepare_kernel()
 	fi
 }
 
-build_modules_stable()
+build_modules()
 {
-    echo "*************************************"
-    echo "*           build modules | stable  *"
-    echo "*************************************"
+    echo "****************************"
+    echo "*           build modules  *"
+    echo "****************************"
     echo
 
-    make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG CFLAGS=" \
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-Ofast \
+				-pipe \
+				-marm \
+				-march=armv6zk \
+				-mtune=arm1176jzf-s \
+				-mfpu=vfp \
+				-mfloat-abi=softfp \
+				-floop-interchange \
+				-floop-strip-mine \
+				-floop-block \
+				-funroll-loops \
+				-ffast-math \
+				-funsafe-loop-optimizations \
+				--param l1-cache-size=16 \
+				--param l1-cache-line-size=32 \
+				--param simultaneous-prefetches=6 \
+				--param prefetch-latency=400" 
+	if [ $? != 0 ] ; then
+	    exit 1
+	fi
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-Ofast \
+                -pipe \
                 -marm \
                 -march=armv6zk \
                 -mtune=arm1176jzf-s \
                 -mfpu=vfp \
                 -mfloat-abi=softfp \
+                -floop-interchange \
+                -floop-strip-mine \
+                -floop-block \
+                -funroll-loops \
+                -ffast-math \
+                -funsafe-loop-optimizations \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
                 --param prefetch-latency=400"
-    if [ $? != 0 ] ; then
-        exit 1
-    fi
-    make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS=" \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -mfloat-abi=softfp \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
-    if [ $? != 0 ] ; then
-        exit 1
-    fi
-
-    for module in $MODULES_STABLE
+    for module in $MODULES
     do
         echo cd $MODULES_DIR/$module
         cd $MODULES_DIR/$module
-        make KDIR=$KERNEL_DIR CFLAGS=" \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -mfloat-abi=softfp \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
- 
+        make KDIR=$KERNEL_DIR 
         if [ -e ./*.ko ]
         then
             cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
@@ -111,82 +110,6 @@ build_modules_stable()
     done
 
 }
-
-
-build_modules_fast()
-{
-	echo "*************************************"
-	echo "*           build modules | fast    *"
-	echo "*************************************"
-	echo
-
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-O2 \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-				-ffast-math \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funsafe-loop-optimizations \
-                -funsafe-math-optimizations \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
-	if [ $? != 0 ] ; then
-	    exit 1
-	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O2 \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-				-ffast-math \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funsafe-loop-optimizations \
-                -funsafe-math-optimizations \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
-	if [ $? != 0 ] ; then
-	    exit 1
-	fi
-
-	for module in $MODULES_FAST
-	do
-		echo cd $MODULES_DIR/$module
-		cd $MODULES_DIR/$module
-		make KDIR=$KERNEL_DIR CFLAGS="-O2 \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -ffast-math \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funsafe-loop-optimizations \
-                -funsafe-math-optimizations \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
-		if [ -e ./*.ko ]
-		then
-		    cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
-		fi
-	done 
-
-}
-
 
 build_kernel()
 {
@@ -197,24 +120,6 @@ build_kernel()
 	fi
 
 	#echo "make " -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG CFLAGS="-Ofast \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funsafe-loop-optimizations \
-                -funsafe-math-optimizations \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
-	if [ $? != 0 ] ; then
-	    exit 1
-	fi
 
 	build_modules_fast
 	build_modules_stable

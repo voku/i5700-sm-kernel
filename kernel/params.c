@@ -23,7 +23,6 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/slab.h>
-#include <linux/ctype.h>
 
 #if 0
 #define DEBUGP printk
@@ -88,7 +87,7 @@ static char *next_arg(char *args, char **param, char **val)
 	}
 
 	for (i = 0; args[i]; i++) {
-		if (isspace(args[i]) && !in_quote)
+		if (args[i] == ' ' && !in_quote)
 			break;
 		if (equals == 0) {
 			if (args[i] == '=')
@@ -122,7 +121,7 @@ static char *next_arg(char *args, char **param, char **val)
 		next = args + i;
 
 	/* Chew up trailing spaces. */
-	while (isspace(*next))
+	while (*next == ' ')
 		next++;
 	return next;
 }
@@ -139,7 +138,7 @@ int parse_args(const char *name,
 	DEBUGP("Parsing ARGS: %s\n", args);
 
 	/* Chew leading spaces */
-	while (isspace(*args))
+	while (*args == ' ')
 		args++;
 
 	while (*args) {
@@ -273,7 +272,6 @@ static int param_array(const char *name,
 		       unsigned int min, unsigned int max,
 		       void *elem, int elemsize,
 		       int (*set)(const char *, struct kernel_param *kp),
-		       u16 flags,
 		       unsigned int *num)
 {
 	int ret;
@@ -283,7 +281,6 @@ static int param_array(const char *name,
 	/* Get the name right for errors. */
 	kp.name = name;
 	kp.arg = elem;
-	kp.flags = flags;
 
 	/* No equals sign? */
 	if (!val) {
@@ -329,8 +326,7 @@ int param_array_set(const char *val, struct kernel_param *kp)
 	unsigned int temp_num;
 
 	return param_array(kp->name, val, 1, arr->max, arr->elem,
-			   arr->elemsize, arr->set, kp->flags,
-			   arr->num ?: &temp_num);
+			   arr->elemsize, arr->set, arr->num ?: &temp_num);
 }
 
 int param_array_get(char *buffer, struct kernel_param *kp)

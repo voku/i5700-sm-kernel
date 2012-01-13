@@ -1348,13 +1348,10 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
 	int status;
 
 	if (args->mount_server.version == 0) {
-		switch (args->version) {
-			default:
-				args->mount_server.version = NFS_MNT3_VERSION;
-				break;
-			case 2:
-				args->mount_server.version = NFS_MNT_VERSION;
-		}
+		if (args->flags & NFS_MOUNT_VER3)
+			args->mount_server.version = NFS_MNT3_VERSION;
+		else
+			args->mount_server.version = NFS_MNT_VERSION;
 	}
 	request.version = args->mount_server.version;
 
@@ -1616,8 +1613,6 @@ static int nfs_validate_mount_data(void *options,
 
 		if (!(data->flags & NFS_MOUNT_TCP))
 			args->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-		else
-			args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
 		/* N.B. caller will free nfs_server.hostname in all cases */
 		args->nfs_server.hostname = kstrdup(data->hostname, GFP_KERNEL);
 		args->namlen		= data->namlen;
@@ -1689,7 +1684,7 @@ static int nfs_validate_mount_data(void *options,
 	}
 
 #ifndef CONFIG_NFS_V3
-	if (args->version == 3)
+	if (args->flags & NFS_MOUNT_VER3)
 		goto out_v3_not_compiled;
 #endif /* !CONFIG_NFS_V3 */
 
@@ -1741,10 +1736,9 @@ nfs_compare_remount_data(struct nfs_server *nfss,
 	    data->acdirmin != nfss->acdirmin / HZ ||
 	    data->acdirmax != nfss->acdirmax / HZ ||
 	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
-	    data->nfs_server.port != nfss->port ||
 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-	    !rpc_cmp_addr(&data->nfs_server.address,
-		    &nfss->nfs_client->cl_addr))
+	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
+		   data->nfs_server.addrlen) != 0)
 		return -EINVAL;
 
 	return 0;
@@ -1786,7 +1780,6 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
 	data->acdirmin = nfss->acdirmin / HZ;
 	data->acdirmax = nfss->acdirmax / HZ;
 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-	data->nfs_server.port = nfss->port;
 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
 		data->nfs_server.addrlen);
@@ -1839,7 +1832,7 @@ static void nfs_fill_super(struct super_block *sb,
 	if (data->bsize)
 		sb->s_blocksize = nfs_block_size(data->bsize, &sb->s_blocksize_bits);
 
-	if (server->nfs_client->rpc_ops->version == 3) {
+	if (server->flags & NFS_MOUNT_VER3) {
 		/* The VFS shouldn't apply the umask to mode bits. We will do
 		 * so ourselves when necessary.
 		 */
@@ -1863,7 +1856,7 @@ static void nfs_clone_super(struct super_block *sb,
 	sb->s_blocksize = old_sb->s_blocksize;
 	sb->s_maxbytes = old_sb->s_maxbytes;
 
-	if (server->nfs_client->rpc_ops->version == 3) {
+	if (server->flags & NFS_MOUNT_VER3) {
 		/* The VFS shouldn't apply the umask to mode bits. We will do
 		 * so ourselves when necessary.
 		 */
