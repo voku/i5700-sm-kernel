@@ -467,7 +467,7 @@ struct limit_names {
 };
 
 static const struct limit_names lnames[RLIM_NLIMITS] = {
-	[RLIMIT_CPU] = {"Max cpu time", "ms"},
+	[RLIMIT_CPU] = {"Max cpu time", "seconds"},
 	[RLIMIT_FSIZE] = {"Max file size", "bytes"},
 	[RLIMIT_DATA] = {"Max data size", "bytes"},
 	[RLIMIT_STACK] = {"Max stack size", "bytes"},
@@ -1221,17 +1221,16 @@ static ssize_t proc_fault_inject_write(struct file * file,
 		count = sizeof(buffer) - 1;
 	if (copy_from_user(buffer, buf, count))
 		return -EFAULT;
-	make_it_fail = simple_strtol(buffer, &end, 0);
-	if (*end == '\n')
-		end++;
+	make_it_fail = simple_strtol(strstrip(buffer), &end, 0);
+	if (*end)
+		return -EINVAL;
 	task = get_proc_task(file->f_dentry->d_inode);
 	if (!task)
 		return -ESRCH;
 	task->make_it_fail = make_it_fail;
 	put_task_struct(task);
-	if (end - buffer == 0)
-		return -EIO;
-	return end - buffer;
+
+	return count;
 }
 
 static const struct file_operations proc_fault_inject_operations = {
@@ -2626,14 +2625,10 @@ static void proc_flush_task_mnt(struct vfsmount *mnt, pid_t pid, pid_t tgid)
 	name.len = snprintf(buf, sizeof(buf), "%d", pid);
 	dentry = d_hash_and_lookup(mnt->mnt_root, &name);
 	if (dentry) {
-		if (!(current->flags & PF_EXITING))
-			shrink_dcache_parent(dentry);
+		shrink_dcache_parent(dentry);
 		d_drop(dentry);
 		dput(dentry);
 	}
-
-	if (tgid == 0)
-		goto out;
 
 	name.name = buf;
 	name.len = snprintf(buf, sizeof(buf), "%d", tgid);
@@ -2691,17 +2686,16 @@ out:
 void proc_flush_task(struct task_struct *task)
 {
 	int i;
-	struct pid *pid, *tgid = NULL;
+    struct pid *pid, *tgid;
 	struct upid *upid;
 
 	pid = task_pid(task);
-	if (thread_group_leader(task))
-		tgid = task_tgid(task);
+	tgid = task_tgid(task);
 
 	for (i = 0; i <= pid->level; i++) {
 		upid = &pid->numbers[i];
 		proc_flush_task_mnt(upid->ns->proc_mnt, upid->nr,
-			tgid ? tgid->numbers[i].nr : 0);
+			tgid->numbers[i].nr);
 	}
 
 	upid = &pid->numbers[pid->level];

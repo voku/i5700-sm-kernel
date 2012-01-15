@@ -488,11 +488,20 @@ static void cfq_service_tree_add(struct cfq_data *cfqd,
 		} else
 			rb_key += jiffies;
 	} else if (!add_front) {
+    /*
+     * Get our rb key offset. Subtract any residual slice
+     * value carried from last service. A negative resid
+     * count indicates slice overrun, and this should position
+     * the next service time further away in the tree.
+     */
 		rb_key = cfq_slice_offset(cfqd, cfqq) + jiffies;
-		rb_key += cfqq->slice_resid;
+		rb_key -= cfqq->slice_resid;
 		cfqq->slice_resid = 0;
-	} else
-		rb_key = 0;
+	} else {
+		rb_key = -HZ;
+		__cfqq = cfq_rb_first(&cfqd->service_tree);
+		rb_key += __cfqq ? __cfqq->rb_key : jiffies;
+	}
 
 	if (!RB_EMPTY_NODE(&cfqq->rb_node)) {
 		/*
@@ -526,7 +535,7 @@ static void cfq_service_tree_add(struct cfq_data *cfqd,
 			n = &(*p)->rb_left;
 		else if (cfq_class_idle(cfqq) > cfq_class_idle(__cfqq))
 			n = &(*p)->rb_right;
-		else if (rb_key < __cfqq->rb_key)
+		else if (time_before(rb_key, __cfqq->rb_key))
 			n = &(*p)->rb_left;
 		else
 			n = &(*p)->rb_right;
@@ -734,8 +743,10 @@ cfq_merged_requests(struct request_queue *q, struct request *rq,
 	 * reposition in fifo if next is older than rq
 	 */
 	if (!list_empty(&rq->queuelist) && !list_empty(&next->queuelist) &&
-	    time_before(next->start_time, rq->start_time))
-		list_move(&rq->queuelist, &next->queuelist);
+		time_before(rq_fifo_time(next), rq_fifo_time(rq))) {
+			list_move(&rq->queuelist, &next->queuelist);
+			rq_set_fifo_time(rq, rq_fifo_time(next));
+		}
 
 	cfq_remove_request(next);
 }
@@ -963,9 +974,7 @@ static void cfq_dispatch_insert(struct request_queue *q, struct request *rq)
  */
 static struct request *cfq_check_fifo(struct cfq_queue *cfqq)
 {
-	struct cfq_data *cfqd = cfqq->cfqd;
-	struct request *rq;
-	int fifo;
+	struct request *rq = NULL;
 
 	if (cfq_cfqq_fifo_expire(cfqq))
 		return NULL;
@@ -975,13 +984,12 @@ static struct request *cfq_check_fifo(struct cfq_queue *cfqq)
 	if (list_empty(&cfqq->fifo))
 		return NULL;
 
-	fifo = cfq_cfqq_sync(cfqq);
 	rq = rq_entry_fifo(cfqq->fifo.next);
 
-	if (time_before(jiffies, rq->start_time + cfqd->cfq_fifo_expire[fifo]))
+    if (time_before(jiffies, rq_fifo_time(rq)))
 		rq = NULL;
 
-	cfq_log_cfqq(cfqd, cfqq, "fifo=%p", rq);
+    cfq_log_cfqq(cfqq->cfqd, cfqq, "fifo=%p", rq);
 	return rq;
 }
 
@@ -1929,6 +1937,7 @@ static void cfq_insert_request(struct request_queue *q, struct request *rq)
 
 	cfq_add_rq_rb(rq);
 
+	rq_set_fifo_time(rq, jiffies + cfqd->cfq_fifo_expire[rq_is_sync(rq)]);
 	list_add_tail(&rq->queuelist, &cfqq->fifo);
 
 	cfq_rq_enqueued(cfqd, cfqq, rq);
