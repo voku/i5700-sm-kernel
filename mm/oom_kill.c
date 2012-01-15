@@ -34,6 +34,23 @@ int sysctl_oom_dump_tasks;
 static DEFINE_SPINLOCK(zone_scan_lock);
 /* #define DEBUG */
 
+/*
+ * Is all threads of the target process nodes overlap ours?
+ */
+static int has_intersects_mems_allowed(struct task_struct *tsk)
+{
+  struct task_struct *t;
+
+  t = tsk;
+  do {
+    if (cpuset_mems_allowed_intersects(current, t))
+      return 1;
+    t = next_thread(t);
+  } while (t != tsk);
+
+  return 0;
+}
+
 /**
  * badness - calculate a numeric value for how bad this task has been
  * @p: task struct of which task we should calculate
@@ -59,6 +76,9 @@ unsigned long badness(struct task_struct *p, unsigned long uptime)
 	struct mm_struct *mm;
 	struct task_struct *child;
 	int oom_adj = p->signal->oom_adj;
+    struct task_cputime task_time;
+    unsigned long utime;
+    unsigned long stime;
 
 	if (oom_adj == OOM_DISABLE)
 		return 0;
@@ -106,8 +126,10 @@ unsigned long badness(struct task_struct *p, unsigned long uptime)
          * of seconds. There is no particular reason for this other than
          * that it turned out to work very well in practice.
 	 */
-	cpu_time = (cputime_to_jiffies(p->utime) + cputime_to_jiffies(p->stime))
-		>> (SHIFT_HZ + 3);
+    thread_group_cputime(p, &task_time);
+    utime = cputime_to_jiffies(task_time.utime);
+    stime = cputime_to_jiffies(task_time.stime);
+    cpu_time = (utime + stime) >> (SHIFT_HZ + 3);
 
 	if (uptime >= p->start_time.tv_sec)
 		run_time = (uptime - p->start_time.tv_sec) >> 10;
@@ -150,7 +172,7 @@ unsigned long badness(struct task_struct *p, unsigned long uptime)
 	 * because p may have allocated or otherwise mapped memory on
 	 * this node before. However it will be less likely.
 	 */
-	if (!cpuset_mems_allowed_intersects(current, p))
+    if (!has_intersects_mems_allowed(p))
 		points /= 8;
 
 	/*
@@ -206,13 +228,13 @@ static inline enum oom_constraint constrained_alloc(struct zonelist *zonelist,
 static struct task_struct *select_bad_process(unsigned long *ppoints,
 						struct mem_cgroup *mem)
 {
-	struct task_struct *g, *p;
+    struct task_struct *p;
 	struct task_struct *chosen = NULL;
 	struct timespec uptime;
 	*ppoints = 0;
 
 	do_posix_clock_monotonic_gettime(&uptime);
-	do_each_thread(g, p) {
+    for_each_process(p) {
 		unsigned long points;
 
 		/*
@@ -265,7 +287,7 @@ static struct task_struct *select_bad_process(unsigned long *ppoints,
 			chosen = p;
 			*ppoints = points;
 		}
-	} while_each_thread(g, p);
+	}
 
 	return chosen;
 }
@@ -346,11 +368,6 @@ static void __oom_kill_task(struct task_struct *p, int verbose)
 
 static int oom_kill_task(struct task_struct *p)
 {
-	struct mm_struct *mm;
-	struct task_struct *g, *q;
-
-	mm = p->mm;
-
 	/* WARNING: mm may not be dereferenced since we did not obtain its
 	 * value from get_task_mm(p).  This is OK since all we need to do is
 	 * compare mm to q->mm below.
@@ -359,21 +376,10 @@ static int oom_kill_task(struct task_struct *p)
 	 * change to NULL at any time since we do not hold task_lock(p).
 	 * However, this is of no concern to us.
 	 */
-	if (!mm || p->signal->oom_adj == OOM_DISABLE)
+    if (!p->mm || p->signal->oom_adj == OOM_DISABLE)
 		return 1;
 
 	__oom_kill_task(p, 1);
-
-	/*
-	 * kill all processes that share the ->mm (i.e. all threads),
-	 * but are in a different thread group. Don't let them have access
-	 * to memory reserves though, otherwise we might deplete all memory.
-	 */
-	do_each_thread(g, q) {
-		if (q->mm == mm && !same_thread_group(q, p))
-			force_sig(SIGKILL, q);
-	} while_each_thread(g, q);
-
 	return 0;
 }
 

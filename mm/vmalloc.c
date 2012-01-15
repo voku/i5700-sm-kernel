@@ -535,10 +535,8 @@ static void __purge_vmap_area_lazy(unsigned long *start, unsigned long *end,
 	}
 	rcu_read_unlock();
 
-	if (nr) {
-		BUG_ON(nr > atomic_read(&vmap_lazy_nr));
+	if (nr)
 		atomic_sub(nr, &vmap_lazy_nr);
-	}
 
 	if (nr || force_flush)
 		flush_tlb_kernel_range(*start, *end);
@@ -1182,15 +1180,20 @@ struct vm_struct *remove_vm_area(const void *addr)
 		struct vm_struct *vm = va->private;
 		struct vm_struct *tmp, **p;
 
-		vmap_debug_free_range(va->va_start, va->va_end);
-		free_unmap_vmap_area(va);
-		vm->size -= PAGE_SIZE;
-
+        /*
+         * remove from list and disallow access to this vm_struct
+         * before unmap. (address range confliction is maintained by
+         * vmap.)
+         */
 		write_lock(&vmlist_lock);
 		for (p = &vmlist; (tmp = *p) != vm; p = &tmp->next)
 			;
 		*p = tmp->next;
 		write_unlock(&vmlist_lock);
+
+        vmap_debug_free_range(va->va_start, va->va_end);
+        free_unmap_vmap_area(va);
+        vm->size -= PAGE_SIZE;
 
 		return vm;
 	}
