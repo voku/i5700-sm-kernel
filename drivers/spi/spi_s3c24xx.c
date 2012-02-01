@@ -312,7 +312,7 @@ static int __init s3c24xx_spi_probe(struct platform_device *pdev)
 		goto err_no_iores;
 	}
 
-	hw->ioarea = request_mem_region(res->start, (res->end - res->start)+1,
+	hw->ioarea = request_mem_region(res->start, resource_size(res),
 					pdev->name);
 
 	if (hw->ioarea == NULL) {
@@ -321,7 +321,7 @@ static int __init s3c24xx_spi_probe(struct platform_device *pdev)
 		goto err_no_iores;
 	}
 
-	hw->regs = ioremap(res->start, (res->end - res->start)+1);
+	hw->regs = ioremap(res->start, resource_size(res));
 	if (hw->regs == NULL) {
 		dev_err(&pdev->dev, "Cannot map IO\n");
 		err = -ENXIO;
