@@ -1,9 +1,9 @@
 /*
- *  linux/arch/arm/boot/compressed/vmlinux.lds.in
+ *  linu/arch/arm/boot/compressed/vmlinux.lds.in
  *
  *  Copyright (C) 2000 Russell King
  *
- * This program is free software; you can redistribute it and/or modify
+ * Thi program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
@@ -54,7 +54,7 @@ SECTIONS
   .bss			: { *(.bss) }
   _end = .;
 
-  .stack : { *(.stack) }
+  .stack (NOLOAD)	: { *(.stack) }
 
   .stab 0		: { *(.stab) }
   .stabstr 0		: { *(.stabstr) }

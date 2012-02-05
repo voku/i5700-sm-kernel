@@ -58,7 +58,7 @@
 #define ANDROID_BUF_SIZE	4096
 
 #define USE_LLI_INTERFACE	
-#undef USE_LLI_INTERFACE
+//#undef USE_LLI_INTERFACE
 
 unsigned int USE_LLI=1;
 

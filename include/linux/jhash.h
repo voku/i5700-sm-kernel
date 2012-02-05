@@ -143,7 +143,7 @@ static inline u32 jhash2(const u32 *k, u32 length, u32 initval)
                 break;
         }
 
-	return c;
+        return c;
 }
 
 /* A special ultra-optimized versions that knows they are hashing exactly
@@ -157,7 +157,7 @@ static inline u32 jhash_3words(u32 a, u32 b, u32 c, u32 initval)
 
         __jhash_final(a, b, c);
 
-	return c;
+        return c;
 }
 
 static inline u32 jhash_2words(u32 a, u32 b, u32 initval)
