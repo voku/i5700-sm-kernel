@@ -33,6 +33,7 @@
 
 /* For Android */
 //#define ANDROID_BUF_NUM 12 - See xmister.c
+// #define ANDROID_BUF_NUM 16
 
 
 #define snd_pcm_substream_chip(substream) ((substream)->private_data)

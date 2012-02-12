@@ -1,9 +1,9 @@
 /*
- *  linu/arch/arm/boot/compressed/vmlinux.lds.in
+ *  linux/arch/arm/boot/compressed/vmlinux.lds.in
  *
  *  Copyright (C) 2000 Russell King
  *
- * Thi program is free software; you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */

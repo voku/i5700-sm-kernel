@@ -35,7 +35,7 @@ static char procfs_buffer[PROCFS_SIZE]="0\0\0";
  */
 static unsigned long procfs_buffer_size=1;
 static unsigned int undervolt=0;
-#define DEF_800 1200
+#define DEF_800 1250
 #define DEF_400 1100
 #define DEF_266 1100
 #define DEF_133 1050
@@ -154,33 +154,6 @@ static unsigned char transition_state_532MHz[][2] = {
 };
 
 static const unsigned int frequency_match_532MHz[][4] = {
-    {667000, 1100, 1250, 0},
-    {333000, 1100, 1250, 1},
-    {166000, 1000, 1150, 2},
-#ifdef USE_DVFS_AL1_LEVEL
-    {166000, 1050, 1050, 3},
-    {83000, 1050, 1050, 4},
-#else
-    {83000, 1050, 1050, 3},
-#endif
-};
-
-static unsigned int frequency_match_800MHz[][4] = {
-    {1066000, DEF_800, 1250, 0},
-    {660000, DEF_400, 1250, 1},
-    {355000, DEF_266, 1250, 2},
-    {177000, DEF_133, 1150, 3},
-#ifdef USE_DVFS_AL1_LEVEL
-    {177000, DEF_133, 1050, 4},
-    {88000, DEF_66, 1050, 5},
-#else
-    {88000, 1050, 1050, 4},
-#endif
-};
-
-
-/*
-static const unsigned int frequency_match_532MHz[][4] = {
     {532000, 1100, 1250, 0},
     {266000, 1100, 1250, 1},
     {133000, 1000, 1250, 2},
@@ -204,7 +177,6 @@ static unsigned int frequency_match_800MHz[][4] = {
     {66000, 1050, 1050, 4},
 #endif
 };
-*/
 
 int uv_procfile_write(struct file *file, const char *buffer, unsigned long count,
 		   void *data)
