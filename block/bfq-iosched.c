@@ -325,7 +325,7 @@ static void bfq_add_rq_rb(struct request *rq)
 {
 	struct bfq_queue *bfqq = RQ_BFQQ(rq);
 	struct bfq_entity *entity = &bfqq->entity;
-	struct bfq_data *bfqd = bfqq->bfqd;
+ 	struct bfq_data *bfqd = bfqq->bfqd;
 	struct request *__alias, *next_rq;
 
 	bfqq->queued[rq_is_sync(rq)]++;
@@ -334,9 +334,11 @@ static void bfq_add_rq_rb(struct request *rq)
 	/*
 	 * Looks a little odd, but the first insert might return an alias,
 	 * if that happens, put the alias on the dispatch list.
-	 */
+	 *
 	while ((__alias = elv_rb_add(&bfqq->sort_list, rq)) != NULL)
-		bfq_dispatch_insert(bfqd->queue, __alias);
+		bfq_dispatch_insert(bfqd->queue, __alias); */
+
+	elv_rb_add(&bfqq->sort_list, rq);
 
 	/*
 	 * check if this request is a better next-serve candidate

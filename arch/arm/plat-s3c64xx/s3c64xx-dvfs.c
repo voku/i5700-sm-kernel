@@ -69,36 +69,7 @@ int uv_procfile_read(char *buffer,
 	return ret;
 }
 
-/*
-static struct cpufreq_frequency_table freq_table_532MHz[] = {
-    {0, 667*KHZ_T},
-    {1, 333*KHZ_T},
-    {2, 166*KHZ_T},
-#ifdef USE_DVFS_AL1_LEVEL
-    {3, 166*KHZ_T},
-    {4, 83*KHZ_T},
-    {5, CPUFREQ_TABLE_END},
-#else
-    {3, 83*KHZ_T},
-    {4, CPUFREQ_TABLE_END},
-#endif
-};
 
-static struct cpufreq_frequency_table freq_table_800MHz[] = {
-    {0, 1066*KHZ_T},
-    {1, 660*KHZ_T},
-    {2, 355*KHZ_T},
-    {3, 177*KHZ_T},
-#ifdef USE_DVFS_AL1_LEVEL
-    {4, 177*KHZ_T},
-    {5, (88)*KHZ_T},
-    {6, CPUFREQ_TABLE_END},
-#else
-    {4, (88)*KHZ_T},
-    {5, CPUFREQ_TABLE_END},
-#endif
-};
-*/
 static struct cpufreq_frequency_table freq_table_532MHz[] = {
     {0, 532*KHZ_T},
     {1, 266*KHZ_T},
@@ -110,7 +81,7 @@ static struct cpufreq_frequency_table freq_table_532MHz[] = {
 #else
     {3, 66*KHZ_T},
     {4, CPUFREQ_TABLE_END},
-#endif
+#endif /* USE_DVFS_AL1_LEVEL */
 };
 
 static struct cpufreq_frequency_table freq_table_800MHz[] = {
@@ -125,7 +96,7 @@ static struct cpufreq_frequency_table freq_table_800MHz[] = {
 #else
     {4, (66)*KHZ_T},
     {5, CPUFREQ_TABLE_END},
-#endif
+#endif /* USE_DVFS_AL1_LEVEL */
 };
 
 static unsigned char transition_state_800MHz[][2] = {
@@ -153,7 +124,9 @@ static unsigned char transition_state_532MHz[][2] = {
 #endif /* USE_DVFS_AL1_LEVEL */
 };
 
+/* frequency voltage matching table */
 static const unsigned int frequency_match_532MHz[][4] = {
+/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
     {532000, 1100, 1250, 0},
     {266000, 1100, 1250, 1},
     {133000, 1000, 1250, 2},
@@ -162,10 +135,13 @@ static const unsigned int frequency_match_532MHz[][4] = {
     {66000, 1050, 1050, 4},
 #else
     {66000, 1050, 1050, 3},
-#endif 
+#endif /* USE_DVFS_AL1_LEVEL */
 };
 
+
+/* frequency voltage matching table */
 static unsigned int frequency_match_800MHz[][4] = {
+/* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
     {800000, DEF_800, 1250, 0},
     {400000, DEF_400, 1250, 1},
     {266000, DEF_266, 1250, 2},
@@ -175,7 +151,7 @@ static unsigned int frequency_match_800MHz[][4] = {
     {66000, DEF_66, 1050, 5},
 #else
     {66000, 1050, 1050, 4},
-#endif
+#endif /* USE_DVFS_AL1_LEVEL */
 };
 
 int uv_procfile_write(struct file *file, const char *buffer, unsigned long count,

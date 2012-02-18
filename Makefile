@@ -343,7 +343,9 @@ MODFLAGS    = -DMODULE \
 				-floop-strip-mine \
 				-floop-block \
 				-funroll-loops \
-				-funsafe-loop-optimizations \
+                -funsafe-math-optimizations \
+                -funsafe-loop-optimizations \
+                -fbranch-target-load-optimize \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
                 --param simultaneous-prefetches=6 \
@@ -362,7 +364,9 @@ CFLAGS_KERNEL   = -Ofast \
 				-floop-strip-mine \
 				-floop-block \
 				-funroll-loops \
+				-funsafe-math-optimizations \
 				-funsafe-loop-optimizations \
+				-fbranch-target-load-optimize \
 				--param l1-cache-size=16 \
 				--param l1-cache-line-size=32 \
 				--param simultaneous-prefetches=6 \
@@ -397,7 +401,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -floop-strip-mine \
                 -floop-block \
                 -funroll-loops \
+                -funsafe-math-optimizations \
                 -funsafe-loop-optimizations \
+                -fbranch-target-load-optimize \
                 -fno-tree-vectorize \
                 -fno-gcse \
                 --param l1-cache-size=16 \
