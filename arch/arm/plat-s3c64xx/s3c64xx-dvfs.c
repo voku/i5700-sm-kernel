@@ -35,11 +35,11 @@ static char procfs_buffer[PROCFS_SIZE]="0\0\0";
  */
 static unsigned long procfs_buffer_size=1;
 static unsigned int undervolt=0;
-#define DEF_800 1250
-#define DEF_400 1100
-#define DEF_266 1100
-#define DEF_133 1050
-#define DEF_66 	1050
+#define DEF_800 1350	
+#define DEF_400 1150	
+#define DEF_266 1100	
+#define DEF_133 1050	
+#define DEF_66  1050
 
 #include <asm/system.h>
 #include <plat/s3c64xx-dvfs.h>
