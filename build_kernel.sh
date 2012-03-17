@@ -81,7 +81,7 @@ build_modules()
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-Ofast \
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
                 -pipe \
                 -marm \
                 -march=armv6zk \
@@ -92,7 +92,6 @@ build_modules()
                 -floop-strip-mine \
                 -floop-block \
                 -funroll-loops \
-                -ffast-math \
                 -funsafe-loop-optimizations \
                 --param l1-cache-size=16 \
                 --param l1-cache-line-size=32 \
@@ -121,7 +120,7 @@ build_kernel()
 
 	#echo "make " -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
 
-	build_modules
+	#build_modules
 
 	echo "*************************************"
 	echo "*           build kernel            *"
