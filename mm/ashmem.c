@@ -283,12 +283,13 @@ static int ashmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 	/* We might recurse into filesystem code, so bail out if necessary */
 	if (nr_to_scan && !(gfp_mask & __GFP_FS))
 		return -1;
+
 	if (!nr_to_scan)
 		return lru_count;
 
-	mutex_lock(&ashmem_mutex);
 	if (!mutex_trylock(&ashmem_mutex))
 		return -1;
+
 	list_for_each_entry_safe(range, next, &ashmem_lru_list, lru) {
 		struct inode *inode = range->asma->file->f_dentry->d_inode;
 		loff_t start = range->pgstart * PAGE_SIZE;
