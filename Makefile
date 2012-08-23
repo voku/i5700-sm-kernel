@@ -191,7 +191,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH			:= arm
-CROSS_COMPILE  := /usr/bin/arm-linux-gnueabi-
+CROSS_COMPILE	:= /usr/bin/arm-linux-gnueabi-
+#CROSS_COMPILE  := ~/sgs2/kernel/linaro/bin/arm-eabi-
 #CROSS_COMPILE	:= /usr/local/arm/4.3.1-eabi-armv6/usr/bin/arm-linux-
 #CROSS_COMPILE	:= $(shell if [ -f .cross_compile ]; then \
 					cat .cross_compile; \
@@ -230,8 +231,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wstrict-prototypes -Ofast -fomit-frame-pointer
-HOSTCXXFLAGS = -Ofast
+HOSTCFLAGS   = -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer
+HOSTCXXFLAGS = -O2
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -331,16 +332,26 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS		= -Ofast -pipe -marm \
-				  -mfpu=vfp -mtune=arm1176jzf-s \
-				  -mfloat-abi=hard \
-				  -funswitch-loops \
+CFLAGS_COMPILE  = -O2 -pipe
+CFLAGS_ARM      = -marm -mfpu=vfp -mtune=arm1176jzf-s \
+				  -mfloat-abi=softfp
+#CFLAGS_REGISTER	= -fschedule-insns -fsched-spec-load -fforce-addr \
+				  -frename-registers -fweb
+#CFLAGS_MATH		= -ffast-math
+#CFLAGS_LOOPS    = -fsingle-precision-constant -fgraphite-identity \
+				  -ftree-loop-distribution -ftree-vectorize \
+				  -ftree-loop-im -ftree-loop-linear -ftree-loop-ivcanon \
 				  -floop-interchange -floop-strip-mine -floop-block \
-				  -fno-inline-functions -fno-tree-vectorize \
-				  -fmodulo-sched -fmodulo-sched-allow-regmoves \
-				  -fsingle-precision-constant -fsched-spec-load
-CFLAGS_MODULE   = $(MODFLAGS)
-AFLAGS_MODULE   = $(MODFLAGS)
+				  -funswitch-loops \
+				  -fgcse -fgcse-lm -fgcse-sm -fgcse-las
+CFLAGS_LOOPS	= -funswitch-loops
+CFLAGS_MODULO   = -fmodulo-sched -fmodulo-sched-allow-regmoves
+#CFLAGS_DISABLE  = -fno-ipa-cp-clone
+KERNELFLAGS     = $(CFLAGS_COMPILE) $(CFLAGS_ARM) $(CFLAGS_REGISTER) \
+				  $(CFLAGS_MATH) $(CFLAGS_LOOPS) $(CFLAGS_DISABLE) 
+MODFLAGS        = -DMODULE $(KERNELFLAGS)
+CFLAGS_MODULE   = 
+AFLAGS_MODULE   = 
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
@@ -357,7 +368,8 @@ KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration
+		   -Werror-implicit-function-declaration \
+		   $(KERNELFLAGS)
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
@@ -534,7 +546,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -Ofast
+KBUILD_CFLAGS	+= -O2
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile

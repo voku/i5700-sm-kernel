@@ -61,49 +61,17 @@ build_modules()
     echo "****************************"
     echo
 
-	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG	CFLAGS="-Ofast \
-				-pipe \
-				-marm \
-				-march=armv6zk \
-				-mtune=arm1176jzf-s \
-				-mfpu=vfp \
-				-mfloat-abi=softfp \
-				-floop-interchange \
-				-floop-strip-mine \
-				-floop-block \
-				-funroll-loops \
-				-ffast-math \
-				-funsafe-loop-optimizations \
-				--param l1-cache-size=16 \
-				--param l1-cache-line-size=32 \
-				--param simultaneous-prefetches=6 \
-				--param prefetch-latency=400" 
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
 	if [ $? != 0 ] ; then
 	    exit 1
 	fi
-	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules CFLAGS="-O3 \
-                -pipe \
-                -marm \
-                -march=armv6zk \
-                -mtune=arm1176jzf-s \
-                -mfpu=vfp \
-                -mfloat-abi=softfp \
-                -floop-interchange \
-                -floop-strip-mine \
-                -floop-block \
-                -funroll-loops \
-                -funsafe-loop-optimizations \
-                --param l1-cache-size=16 \
-                --param l1-cache-line-size=32 \
-                --param simultaneous-prefetches=6 \
-                --param prefetch-latency=400"
+	make -C $KERNEL_DIR ARCH=arm KBUILD_MODPOST_WARN=1 modules
     for module in $MODULES
     do
         echo cd $MODULES_DIR/$module
         cd $MODULES_DIR/$module
         make KDIR=$KERNEL_DIR 
-        if [ -e ./*.ko ]
-        then
+        if [ -e ./*.ko ]; then
             cp ./*.ko  $KERNEL_DIR/../initramfs/lib/modules
         fi
     done
@@ -118,9 +86,9 @@ build_kernel()
 		fi
 	fi
 
-	#echo "make " -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
+	make -C $KERNEL_DIR ARCH=arm $KERNEL_DEF_CONFIG
 
-	#build_modules
+	build_modules
 
 	echo "*************************************"
 	echo "*           build kernel            *"
